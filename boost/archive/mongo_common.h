@@ -86,12 +86,12 @@ typedef fusion::map<
 
 
 typedef fusion::map<
-		fusion::pair<archive::class_id_type, int16_t>,
-		fusion::pair<archive::class_id_optional_type, int16_t>, // strong reference to class_id_type
-		fusion::pair<archive::class_id_reference_type, int16_t>, // strong reference to class_id_type
-		fusion::pair<archive::object_id_type, uint32_t>,
-		fusion::pair<archive::object_reference_type, uint16_t>, // strong typedef to object_id_type
-		fusion::pair<archive::version_type, uint32_t>,
+		fusion::pair<archive::class_id_type, int_least16_t>,
+		fusion::pair<archive::class_id_optional_type, int_least16_t>, // strong typedef to class_id_type
+		fusion::pair<archive::class_id_reference_type, int_least16_t>, // strong typedef to class_id_type
+		fusion::pair<archive::object_id_type, uint_least32_t>,
+		fusion::pair<archive::object_reference_type, uint_least32_t>, // strong typedef to object_id_type
+		fusion::pair<archive::version_type, uint_least32_t>,
 		fusion::pair<archive::tracking_type, bool>
 		//fusion::pair<archive::class_name_type, char const*>
 	> meta_type_mapping;

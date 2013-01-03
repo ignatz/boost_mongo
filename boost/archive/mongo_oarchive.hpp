@@ -64,9 +64,10 @@ protected:
     save_override(T const& t, int x)
     {
 		using namespace boost::fusion::result_of;
+		typename value_at_key<meta_type_mapping, T>::type tmp(
+			static_cast<typename value_at_key<meta_type_mapping, T>::type>(t));
 		save_override(boost::serialization::make_nvp(
-				fusion::at_key<T>(meta_type_names),
-				static_cast<typename value_at_key<meta_type_mapping, T>::type const&>(t)), x);
+				fusion::at_key<T>(meta_type_names), tmp), x);
 	}
 
     // special treatment for name-value pairs.
