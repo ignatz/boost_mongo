@@ -13,7 +13,7 @@
 
 #include <boost/archive/detail/register_archive.hpp>
 #include <boost/archive/detail/common_iarchive.hpp>
-#include "boost/archive/shared_ptr_helper.hpp"
+#include <boost/archive/shared_ptr_helper.hpp>
 
 #include <boost/archive/detail/abi_prefix.hpp> // must be the last header
 
