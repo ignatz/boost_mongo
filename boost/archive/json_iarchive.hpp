@@ -22,9 +22,8 @@ public:
 		mongo_iarchive(_o, flags | is_json),
 		_o()
 	{
-		std::string s(
-			std::istreambuf_iterator<char>(is),
-			std::istreambuf_iterator<char>{});
+		std::istreambuf_iterator<char> eof;
+		std::string s(std::istreambuf_iterator<char>(is), eof);
 		_o = mongo::fromjson(s);
 	}
 };

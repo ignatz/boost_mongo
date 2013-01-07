@@ -4,7 +4,7 @@
 // Distributed under the Boost Software License, Version 1.0.
 // (See http://www.boost.org/LICENSE_1_0.txt)
 
-#include <type_traits>
+#include <boost/type_traits.hpp>
 #include <mongo/client/dbclient.h>
 
 #define FUSION_MAX_VECTOR_SIZE 20
@@ -42,23 +42,24 @@ class has_compare
 {
 private:
 	// better match if SFINAE doesn't fail
+	typedef char true_type;
 	template<typename U>
-	static constexpr bool fun(decltype(&U::operator==)*) { return true; }
+	static true_type fun(char[sizeof(&U::operator==)]);
 
+	typedef int false_type;
 	template<typename U>
-	static constexpr bool fun(...) { return false; }
+	static false_type fun(...);
 public:
-	enum : bool { value = fun<T>(nullptr) };
+	static const bool value = (sizeof(fun<T>(0))==sizeof(true_type));
 };
 
 
 template<typename T>
 struct is_compressable
 {
-	enum : bool { value =
-		std::is_default_constructible<T>::value &&
-		(detail::has_compare<T>::value || std::is_arithmetic<T>::value)
-		   };
+	static const bool value =
+		boost::has_trivial_default_constructor<T>::value &&
+		(detail::has_compare<T>::value || boost::is_arithmetic<T>::value);
 };
 
 } // detail
@@ -72,8 +73,6 @@ typedef fusion::map<
 		fusion::pair<signed char, int>,
 		fusion::pair<unsigned char, int>,
 		fusion::pair<wchar_t, int>,
-		fusion::pair<char16_t, int>,
-		fusion::pair<char32_t, long>,
 		fusion::pair<short, int>,
 		fusion::pair<unsigned short, int>,
 		fusion::pair<unsigned int, long long>,

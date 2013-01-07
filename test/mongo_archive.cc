@@ -1,9 +1,11 @@
 #include <iostream>
 #include <gtest/gtest.h>
 
+#include <boost/foreach.hpp>
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/archive/xml_oarchive.hpp>
+
 #include "boost/archive/mongo_oarchive.hpp"
 #include "boost/archive/mongo_iarchive.hpp"
 
@@ -66,7 +68,9 @@ struct A
 	Name n;
 
 	//char const ch [6] = "hello";
-	std::string str = "me string";
+	std::string str;
+
+	A() : str("me string") {}
 
 	bool operator== (A const& other) const
 	{
@@ -126,7 +130,7 @@ TEST(MongoArchive, AllMembersRegressionTest)
 	mongo << make_nvp(name, a);
 
 	mongo::BSONObj o = builder.obj();
-	auto elem = o.getField(name).embeddedObject().getField("elems");
+	mongo::BSONElement elem = o.getField(name).embeddedObject().getField("elems");
 	ASSERT_EQ(static_cast<int>(a.size()+1), elem.embeddedObject().nFields());
 }
 
@@ -140,8 +144,10 @@ TEST(MongoArchive, Array)
 	mongo_oarchive out(builder);
 
 	size_t cnt = 0;
-	for(auto& val : a)
+	BOOST_FOREACH(int& val, a)
+	{
 		val = cnt++;
+	}
 
 	out << make_nvp(name, a);
 
@@ -163,8 +169,10 @@ TEST(MongoArchive, SparseArray)
 	mongo_oarchive out(builder, mongo_oarchive::sparse_array);
 
 	// zero all entries
-	for(auto& val : a)
+	BOOST_FOREACH(int& val, a)
+	{
 		val = 0;
+	}
 
 	// set some to individual values
 	int start=10, range=10;
@@ -175,7 +183,7 @@ TEST(MongoArchive, SparseArray)
 
 	mongo::BSONObj o = builder.obj();
 
-	auto elem = o.getField(name).embeddedObject().getField("elems");
+	mongo::BSONElement elem = o.getField(name).embeddedObject().getField("elems");
 	ASSERT_EQ(range+1, elem.embeddedObject().nFields());
 
 	mongo_iarchive in(o, mongo_iarchive::sparse_array);
