@@ -6,7 +6,6 @@
 
 #include <vector>
 #include <cstddef>
-#include <cassert>
 #include <string>
 
 #include "boost/archive/mongo_common.h"

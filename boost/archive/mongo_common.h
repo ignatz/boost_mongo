@@ -6,6 +6,8 @@
 
 #include <boost/type_traits.hpp>
 #include <mongo/client/dbclient.h>
+#include <cassert> /* must be included after mongo to workaround an assert
+					  redefinition in older versions */
 
 #define FUSION_MAX_VECTOR_SIZE 20
 #define FUSION_MAX_MAP_SIZE 20
