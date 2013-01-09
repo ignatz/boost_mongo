@@ -20,6 +20,9 @@
 
 #include <boost/archive/detail/abi_prefix.hpp> // must be the last header
 
+// BV: Need to include assert after all mongo client stuff, as the latter redefines assert(..)
+#include <cassert>
+
 namespace boost {
 namespace archive {
 
