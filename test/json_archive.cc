@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sstream>
 
+#include <boost/foreach.hpp>
 #include "boost/archive/json_oarchive.hpp"
 #include "boost/archive/json_iarchive.hpp"
 
@@ -60,8 +61,10 @@ TEST(JSONArchive, Array)
 	mongo_oarchive out(builder);
 
 	size_t cnt = 0;
-	for(auto& val : a)
+	BOOST_FOREACH(int& val, a)
+	{
 		val = cnt++;
+	}
 
 	std::stringstream ss;
 	{

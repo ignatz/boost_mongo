@@ -6,10 +6,14 @@
 
 #include <vector>
 #include <cstddef>
-#include <memory>
 #include <string>
 
 #include "boost/archive/mongo_common.h"
+
+#include <boost/utility/enable_if.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/mpl/assert.hpp>
 
 #include <boost/archive/detail/register_archive.hpp>
 #include <boost/archive/detail/common_iarchive.hpp>
@@ -29,7 +33,7 @@ protected:
 	friend class load_access;
 
 	typedef mongo::BSONObj type;
-	typedef std::unique_ptr<type, detail::cond_deleter<type>> value_type;
+	typedef boost::shared_ptr<type> value_type;
 
 	std::vector<value_type> _stack;
 	mongo::BSONElement _current;
@@ -44,7 +48,7 @@ protected:
     // Anything not an attribute and not a name-value pair is an
     // error and should be trapped here.
     template<typename T>
-	typename std::enable_if<
+	typename boost::enable_if_c<
 			!fusion::result_of::has_key<meta_type_mapping, T>::type::value
 		>::type
     load_override(T& t, int x)
@@ -52,13 +56,12 @@ protected:
         // If your program fails to compile here, its most likely due to
         // not specifying an nvp wrapper around the variable to
         // be serialized.
-        static_assert(serialization::is_wrapper<T>::type::value,
-					  "you most likely forgot an nvp wrapper");
+		BOOST_MPL_ASSERT((serialization::is_wrapper<T>));
         this->detail::common_iarchive<mongo_iarchive>::load_override(t, x);
     }
 
     template<typename T>
-	typename std::enable_if<
+	typename boost::enable_if_c<
 			fusion::result_of::has_key<meta_type_mapping, T>::type::value
 		>::type
     load_override(T& t, int)
@@ -72,8 +75,8 @@ protected:
     template<typename T>
     void load_override(boost::serialization::nvp<T> const& t, int x)
 	{
-		// we have an enum type if name is nullptr... seriously!1!!
-		if (t.name() == nullptr) {
+		// we have an enum type if name is NULL ... seriously!1!!
+		if (t.name() == NULL) {
 			load_enum(t.value(), x);
 			return;
 		}
@@ -83,7 +86,7 @@ protected:
 		bool is_stack = _current.isABSONObj();
 
 		if (is_stack) {
-			_stack.emplace_back(new type);
+			_stack.push_back(value_type(new type));
 			_current.Val(last());
 		}
 
@@ -98,31 +101,32 @@ protected:
 
 	// specialization for any array type
 	template<typename T>
-	typename std::enable_if<!detail::is_compressable<T>::value>::type
+	typename boost::enable_if_c<!detail::is_compressable<T>::value>::type
 	load_override(boost::serialization::array<T> const& a, int x)
 	{
 		using boost::serialization::make_nvp;
 		for (size_t ii = 0; ii<a.count(); ++ii)
 		{
-			std::string s = std::to_string(ii);
+			std::string s = boost::lexical_cast<std::string>(ii);
 			load_override(make_nvp(s.c_str(), *(a.address()+ii)), x);
 		}
 	}
 
 	template<typename T>
-	typename std::enable_if<detail::is_compressable<T>::value>::type
+	typename boost::enable_if_c<detail::is_compressable<T>::value>::type
 	load_override(boost::serialization::array<T> const& a, int x)
 	{
 		using boost::serialization::make_nvp;
 		for (size_t ii = 0; ii<a.count(); ++ii)
 		{
-			std::string s = std::to_string(ii);
+			std::string s = boost::lexical_cast<std::string>(ii);
 			try {
 				load_override(make_nvp(s.c_str(), *(a.address()+ii)), x);
 			} catch (mongo::UserException) {
 				if (!(_flags & sparse_array))
 					throw;
-				*(a.address()+ii) = T {};
+				T t = T();
+				*(a.address()+ii) = t;
 			}
 		}
 	}
@@ -135,13 +139,13 @@ protected:
 	}
 
 	template<typename T>
-	typename std::enable_if<
+	typename boost::enable_if_c<
 			!fusion::result_of::has_key<bson_type_mapping, T>::type::value
 		>::type
 	load(T& t);
 
 	template<typename T>
-	typename std::enable_if<
+	typename boost::enable_if_c<
 			fusion::result_of::has_key<bson_type_mapping, T>::type::value
 		>::type
 	load(T& t);
@@ -173,9 +177,9 @@ public:
 	};
 
     mongo_iarchive(type& obj, unsigned int flags = 0) :
-		_stack(), _current(), _name(nullptr), _flags(flags)
+		_stack(), _current(), _name(NULL), _flags(flags)
 	{
-		_stack.emplace_back(&obj, detail::cond_deleter<type>(false));
+		_stack.push_back(value_type(&obj, detail::cond_deleter<type>(false)));
 	}
 
     void load_binary(void* address, std::size_t count);
@@ -190,7 +194,7 @@ struct load_array_type<mongo_iarchive>
     template<typename T>
     static void invoke(mongo_iarchive& ar, T& t)
 	{
-		typedef typename std::remove_extent<T>::type value_type;
+		typedef typename boost::remove_extent<T>::type value_type;
 
 		// consider alignment
 		std::size_t c = sizeof(t) / sizeof(value_type);
@@ -229,7 +233,7 @@ void mongo_iarchive::load_override(class_name_type& t, int)
 
 
 template<typename T>
-typename std::enable_if<
+typename boost::enable_if_c<
 		!fusion::result_of::has_key<bson_type_mapping, T>::type::value
 	>::type
 mongo_iarchive::load(T& t)
@@ -241,7 +245,7 @@ mongo_iarchive::load(T& t)
 }
 
 template<typename T>
-typename std::enable_if<
+typename boost::enable_if_c<
 		fusion::result_of::has_key<bson_type_mapping, T>::type::value
 	>::type
 mongo_iarchive::load(T& t)
