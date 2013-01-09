@@ -6,7 +6,6 @@
 
 #include <vector>
 #include <cstddef>
-#include <cassert>
 #include <string>
 
 #include "boost/archive/mongo_common.h"
@@ -20,6 +19,9 @@
 #include <boost/archive/detail/common_oarchive.hpp>
 
 #include <boost/archive/detail/abi_prefix.hpp> // must be the last header
+
+// BV: Need to include assert after all mongo client stuff, as the latter redefines assert(..)
+#include <cassert>
 
 namespace boost {
 namespace archive {
