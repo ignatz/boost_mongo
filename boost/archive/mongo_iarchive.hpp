@@ -125,8 +125,7 @@ protected:
 			} catch (mongo::UserException) {
 				if (!(_flags & sparse_array))
 					throw;
-				T t = T();
-				*(a.address()+ii) = t;
+				*(a.address()+ii) = T();
 			}
 		}
 	}

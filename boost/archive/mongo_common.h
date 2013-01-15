@@ -5,9 +5,14 @@
 // (See http://www.boost.org/LICENSE_1_0.txt)
 
 #include <boost/type_traits.hpp>
+
+// we push the assert macro on the compiler stack and restore it afer we
+// included the mongo header, because older version redefine the standard
+// macro.
+#pragma push_macro("assert")
 #include <mongo/client/dbclient.h>
-#include <cassert> /* must be included after mongo to workaround an assert
-					  redefinition in older versions */
+#pragma pop_macro("assert")
+#include <cassert>
 
 #define FUSION_MAX_VECTOR_SIZE 20
 #define FUSION_MAX_MAP_SIZE 20

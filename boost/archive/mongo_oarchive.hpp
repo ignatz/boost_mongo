@@ -118,11 +118,10 @@ protected:
 	save_override(boost::serialization::array<T> const& a, int x)
 	{
 		typedef typename boost::decay<T>::type base_type;
-		base_type ref = base_type();
 		using boost::serialization::make_nvp;
 		for (size_t ii = 0; ii<a.count(); ++ii)
 		{
-			if (_flags & sparse_array && *(a.address()+ii) == ref)
+			if (_flags & sparse_array && *(a.address()+ii) == base_type())
 				continue;
 
 			std::string s = boost::lexical_cast<std::string>(ii);
