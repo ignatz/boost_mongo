@@ -6,35 +6,15 @@
 #include "boost/archive/json_oarchive.hpp"
 #include "boost/archive/json_iarchive.hpp"
 
+#include "test/Dummy.h"
+
 using namespace boost::archive;
 using boost::serialization::make_nvp;
-
-struct B
-{
-	int a;
-	unsigned int b;
-
-	bool operator== (B const& other) const
-	{
-		return a == other.a &&
-			b == other.b;
-	}
-
-private:
-	friend class boost::serialization::access;
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned int const)
-	{
-		using namespace boost::serialization;
-		ar & BOOST_SERIALIZATION_NVP(a)
-		   & BOOST_SERIALIZATION_NVP(b);
-	}
-};
 
 TEST(JSONArchive, Base)
 {
 	const char name [] = { "myType" };
-	B a, b;
+	Dummy a, b;
 	a.a = 42;
 	a.b = 23;
 

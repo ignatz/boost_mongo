@@ -15,17 +15,26 @@ class json_iarchive :
     public mongo_iarchive
 {
 private:
-	mongo::BSONObj _o;
+	typedef std::istreambuf_iterator<char> iterator;
+	mongo::BSONObj* _obj;
+
+	mongo::BSONObj const& init(std::istream& is)
+	{
+		_obj = new mongo::BSONObj();
+		*_obj = mongo::fromjson(std::string(iterator(is), iterator()));
+		return *_obj;
+	}
 
 public:
-    json_iarchive(std::istream& is, unsigned int flags = 0) :
-		mongo_iarchive(_o, flags | is_json),
-		_o()
+	json_iarchive(std::istream& is, unsigned int const flags = 0) :
+		mongo_iarchive(init(is), flags | is_json)
+	{}
+
+	~json_iarchive()
 	{
-		std::istreambuf_iterator<char> eof;
-		std::string s(std::istreambuf_iterator<char>(is), eof);
-		_o = mongo::fromjson(s);
+	  delete _obj;
 	}
+
 };
 
 } // archive

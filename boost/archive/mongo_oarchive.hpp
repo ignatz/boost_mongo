@@ -17,6 +17,7 @@
 
 #include <boost/archive/detail/register_archive.hpp>
 #include <boost/archive/detail/common_oarchive.hpp>
+#include <boost/serialization/item_version_type.hpp>
 
 #include <boost/archive/detail/abi_prefix.hpp> // must be the last header
 
@@ -74,7 +75,7 @@ protected:
 
     // special treatment for name-value pairs.
     template<typename T>
-    void save_override(boost::serialization::nvp<T> const& t, int)
+    void save_override(boost::serialization::nvp<T> const& t, int x)
 	{
 		// we have an enum type if name is NULL ... seriously!1!!
 		if (t.name() == NULL) {
@@ -86,7 +87,7 @@ protected:
 		_stack.push_back(_current);
 		_current = value_type(new type);
 
-		detail::common_oarchive<mongo_oarchive>::save_override(t.const_value(), 0);
+		detail::common_oarchive<mongo_oarchive>::save_override(t.const_value(), x);
 
 		mongo::BSONObj obj = _current->obj();
 		if (!obj.isEmpty()) {
@@ -145,6 +146,7 @@ protected:
 
 	// required overload for boost serialization
 	void save(boost::serialization::collection_size_type const& t);
+	void save(boost::serialization::item_version_type const& t);
 
 	// required for strings
 	void save(std::string const& s);
@@ -169,7 +171,7 @@ public:
 		};
 	};
 
-    mongo_oarchive(type& obj, unsigned int flags = 0) :
+    mongo_oarchive(type& obj, unsigned int const flags = 0) :
 		_stack(), _current(&obj, detail::cond_deleter<type>(false)),
 		_name(NULL), _flags(flags)
 	{}
@@ -189,7 +191,7 @@ struct save_array_type<mongo_oarchive>
         typedef typename boost::remove_extent<T>::type value_type;
 
         // consider alignment
-        std::size_t c = sizeof(t) / sizeof(value_type);
+        size_t const c = sizeof(t) / sizeof(value_type);
 
         boost::serialization::collection_size_type count(c);
         ar << BOOST_SERIALIZATION_NVP(count);
@@ -248,6 +250,12 @@ inline
 void mongo_oarchive::save(boost::serialization::collection_size_type const& t)
 {
 	save(static_cast<size_t>(t));
+}
+
+inline
+void mongo_oarchive::save(boost::serialization::item_version_type const& t)
+{
+	save(static_cast<unsigned int>(t));
 }
 
 inline

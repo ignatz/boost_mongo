@@ -5,6 +5,7 @@
 // (See http://www.boost.org/LICENSE_1_0.txt)
 
 #include <vector>
+#include <list>
 #include <cstddef>
 #include <string>
 
@@ -32,17 +33,16 @@ protected:
 	friend class detail::interface_iarchive<mongo_iarchive>;
 	friend class load_access;
 
-	typedef mongo::BSONObj type;
-	typedef boost::shared_ptr<type> value_type;
+	typedef mongo::BSONElement type;
+	typedef std::list<type> value_type;
 
 	std::vector<value_type> _stack;
-	mongo::BSONElement _current;
-	char const* _name;
 	unsigned int const _flags;
 
 	type& last()
 	{
-		return *_stack.back();
+		assert(_stack.size()>0 && _stack.back().size()>0);
+		return _stack.back().front();
 	}
 
     // Anything not an attribute and not a name-value pair is an
@@ -77,24 +77,26 @@ protected:
 	{
 		// we have an enum type if name is NULL ... seriously!1!!
 		if (t.name() == NULL) {
-			load_enum(t.value(), x);
+			load_enum(t.value());
 			return;
 		}
 
-		_name = t.name();
-		_current = last()[_name];
-		bool is_stack = _current.isABSONObj();
-
-		if (is_stack) {
-			_stack.push_back(value_type(new type));
-			_current.Val(last());
+		assert(strcmp(t.name(), last().fieldName()) == 0);
+		bool const is_obj = last().isABSONObj();
+		if (is_obj) {
+			value_type tmp;
+			last().Obj().elems(tmp);
+			_stack.push_back(value_type());
+			_stack.back().swap(tmp);
 		}
 
-		detail::common_iarchive<mongo_iarchive>::load_override(t.value(), 0);
+		detail::common_iarchive<mongo_iarchive>::load_override(t.value(), x);
 
-		if (is_stack) {
+		if (is_obj) {
 			_stack.pop_back();
 		}
+
+		_stack.back().pop_front();
     }
 
 	void load_override(class_name_type& t, int);
@@ -117,24 +119,31 @@ protected:
 	load_override(boost::serialization::array<T> const& a, int x)
 	{
 		using boost::serialization::make_nvp;
-		for (size_t ii = 0; ii<a.count(); ++ii)
-		{
-			std::string s = boost::lexical_cast<std::string>(ii);
-			try {
-				load_override(make_nvp(s.c_str(), *(a.address()+ii)), x);
-			} catch (mongo::UserException) {
-				if (!(_flags & sparse_array))
-					throw;
-				*(a.address()+ii) = T();
+
+		if (!(_flags & sparse_array)) {
+			for (size_t ii = 0; ii<a.count(); ++ii)
+			{
+				assert(boost::lexical_cast<std::string>(ii) == last().fieldName());
+				load_override(make_nvp(last().fieldName(), *(a.address()+ii)), x);
 			}
+		} else {
+			for (size_t ii = 0; ii<a.count(); ++ii)
+			{
+				if (_stack.back().size() && boost::lexical_cast<std::string>(ii) == last().fieldName()) {
+					load_override(make_nvp(last().fieldName(), *(a.address()+ii)), x);
+				} else {
+					*(a.address()+ii) = T();
+				}
+			}
+
 		}
 	}
 
 	template<typename U, typename T>
-	void load_field_and_cast(const char* field, T& t)
+	void load_field_and_cast(const char* /*field_name*/, T& t)
 	{
-		_current = last()[field];
 		load(static_cast<U>(t));
+		_stack.back().pop_front();
 	}
 
 	template<typename T>
@@ -151,13 +160,14 @@ protected:
 
 	// required overload for boost serialization
 	void load(boost::serialization::collection_size_type& t);
+	void load(boost::serialization::item_version_type& t);
 
 	// required for strings
 	void load(std::string& s);
 
     template<typename T>
-	void load_enum(T&, int) {}
-	void load_enum(int& t, int) { last()[_name].Val(t); }
+	void load_enum(T&) {}
+	void load_enum(int& t) { last().Val(t); }
 
 public:
 	enum flags {
@@ -175,10 +185,10 @@ public:
 		};
 	};
 
-    mongo_iarchive(type& obj, unsigned int flags = 0) :
-		_stack(), _current(), _name(NULL), _flags(flags)
+    mongo_iarchive(mongo::BSONObj const& obj, unsigned int const flags = 0) :
+		_stack(1), _flags(flags)
 	{
-		_stack.push_back(value_type(&obj, detail::cond_deleter<type>(false)));
+		obj.elems(_stack.back());
 	}
 
     void load_binary(void* address, std::size_t count);
@@ -196,7 +206,7 @@ struct load_array_type<mongo_iarchive>
 		typedef typename boost::remove_extent<T>::type value_type;
 
 		// consider alignment
-		std::size_t c = sizeof(t) / sizeof(value_type);
+		size_t const c = sizeof(t) / sizeof(value_type);
 
 		boost::serialization::collection_size_type count(c);
 		ar >> BOOST_SERIALIZATION_NVP(count);
@@ -225,7 +235,7 @@ namespace archive {
 inline
 void mongo_iarchive::load_override(class_name_type& t, int)
 {
-	std::string str = last()["_class_name"].String();
+	std::string str = last().String();
 	t.t = new char[str.size()+1];
 	str.copy(t.t, std::string::npos);
 }
@@ -238,9 +248,9 @@ typename boost::enable_if_c<
 mongo_iarchive::load(T& t)
 {
 	if (_flags & is_json)
-		t = _current.number();
+		t = last().number();
 	else
-		_current.Val(t);
+		last().Val(t);
 }
 
 template<typename T>
@@ -250,11 +260,11 @@ typename boost::enable_if_c<
 mongo_iarchive::load(T& t)
 {
 	if (_flags & is_json)
-		t = _current.number();
+		t = last().number();
 	else {
 		using namespace boost::fusion::result_of;
 		typename value_at_key<bson_type_mapping, T>::type tmp;
-		_current.Val(tmp);
+		last().Val(tmp);
 		t = tmp;
 	}
 }
@@ -266,16 +276,22 @@ void mongo_iarchive::load(boost::serialization::collection_size_type& t)
 }
 
 inline
+void mongo_iarchive::load(boost::serialization::item_version_type& t)
+{
+	load(static_cast<unsigned int&>(t));
+}
+
+inline
 void mongo_iarchive::load(std::string& s)
 {
-	_current.Val(s);
+	last().Val(s);
 }
 
 
 inline
 void mongo_iarchive::load_binary(void* address, std::size_t count)
 {
-	std::string str = _current.String();
+	std::string str = last().String();
 	assert(str.size() == count);
 	str.copy(static_cast<char*>(address), count);
 }

@@ -19,7 +19,7 @@ private:
 	std::ostream& _os;
 
 public:
-    json_oarchive(std::ostream& os, unsigned int flags = 0) :
+    json_oarchive(std::ostream& os, unsigned int const flags = 0) :
 		mongo_oarchive(_b, flags),
 		_b(),
 		_os(os)

@@ -4,10 +4,13 @@
 #include <boost/foreach.hpp>
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/array.hpp>
+#include <boost/serialization/map.hpp>
 #include <boost/archive/xml_oarchive.hpp>
 
 #include "boost/archive/mongo_oarchive.hpp"
 #include "boost/archive/mongo_iarchive.hpp"
+
+#include "test/Dummy.h"
 
 using namespace boost::archive;
 using boost::serialization::make_nvp;
@@ -60,46 +63,12 @@ TYPED_TEST(MongoBuiltin, BaseTypes)
 	ASSERT_EQ(a, b);
 }
 
-struct A
-{
-	int a;
-	unsigned int b;
-	enum Name { x, y, z };
-	Name n;
-
-	//char const ch [6] = "hello";
-	std::string str;
-
-	A() : str("me string") {}
-
-	bool operator== (A const& other) const
-	{
-		return a == other.a &&
-			b == other.b &&
-			n == other.n &&
-			//ch == other.ch &&
-			str == other.str;
-	}
-
-private:
-	friend class boost::serialization::access;
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned int const)
-	{
-		using namespace boost::serialization;
-		ar & BOOST_SERIALIZATION_NVP(a)
-		   & BOOST_SERIALIZATION_NVP(b)
-		   & make_nvp("enum", n)
-		   //& make_nvp("ch", ch)
-		   & make_nvp("str", str);
-	}
-};
 
 TEST(MongoArchive, CustomType)
 {
 	const char name [] = { "myType" };
-	A a, b;
-	a.n = static_cast<A::Name>(42);
+	Dummy a, b;
+	a.n = static_cast<Dummy::Name>(42);
 	a.str = "hihihi";
 
 	mongo::BSONObjBuilder builder;
@@ -190,4 +159,31 @@ TEST(MongoArchive, SparseArray)
 	in >> make_nvp(name, b);
 
 	ASSERT_EQ(a, b);
+}
+
+TEST(MongoArchive, Map)
+{
+	const char name [] = { "myMap" };
+	typedef std::map<std::string, Dummy> map_t;
+	map_t x, y;
+
+	x["one"].a = 42;
+	x["one"].b = 23;
+	x["two"].a = 5;
+	x["three"].b = 1337;
+	ASSERT_EQ(3u, x.size());
+	ASSERT_NE(x, y);
+
+	mongo::BSONObjBuilder builder;
+	mongo_oarchive out(builder);
+
+	out << make_nvp(name, x);
+
+	mongo::BSONObj o = builder.obj();
+
+	mongo_iarchive in(o);
+	in >> make_nvp(name, y);
+
+	ASSERT_EQ(3u, y.size());
+	ASSERT_EQ(x, y);
 }
