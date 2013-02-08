@@ -12,14 +12,15 @@ struct Dummy
 	unsigned int b;
 	enum Name { x, y, z };
 	Name n;
-
-	//char const ch [6] = "hello";
 	std::string str;
 
-	Dummy() : str("me string") {}
+	Dummy() :
+		a(0), b(0), n(x), str("me string")
+	{}
 
 	bool operator== (Dummy const& other) const
 	{
+		// bitwise compare
 		return (strncmp((char*)this, (char*)&other, sizeof(Dummy)) == 0);
 	}
 
@@ -32,7 +33,6 @@ private:
 		ar & BOOST_SERIALIZATION_NVP(a)
 		   & BOOST_SERIALIZATION_NVP(b)
 		   & make_nvp("enum", n)
-		   //& make_nvp("ch", ch)
 		   & make_nvp("str", str);
 	}
 };

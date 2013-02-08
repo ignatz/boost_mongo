@@ -153,7 +153,7 @@ protected:
 
 	// requirest for enum types (null pointer for the win!)
 	template<typename T>
-	void save_enum(T const&) {}
+	void save_enum(T const&) { assert(false); }
 	void save_enum(int const& e) { save(e);}
 
 public:

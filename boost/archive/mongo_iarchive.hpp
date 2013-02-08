@@ -45,6 +45,12 @@ protected:
 		return _stack.back().front();
 	}
 
+	void pop_last()
+	{
+		assert(_stack.size()>0 && _stack.back().size()>0);
+		_stack.back().pop_front();
+	}
+
     // Anything not an attribute and not a name-value pair is an
     // error and should be trapped here.
     template<typename T>
@@ -96,7 +102,7 @@ protected:
 			_stack.pop_back();
 		}
 
-		_stack.back().pop_front();
+		pop_last();
     }
 
 	void load_override(class_name_type& t, int);
@@ -143,7 +149,7 @@ protected:
 	void load_field_and_cast(const char* /*field_name*/, T& t)
 	{
 		load(static_cast<U>(t));
-		_stack.back().pop_front();
+		pop_last();
 	}
 
 	template<typename T>
@@ -166,7 +172,7 @@ protected:
 	void load(std::string& s);
 
     template<typename T>
-	void load_enum(T&) {}
+	void load_enum(T&) { assert(false); }
 	void load_enum(int& t) { last().Val(t); }
 
 public:
@@ -189,6 +195,12 @@ public:
 		_stack(1), _flags(flags)
 	{
 		obj.elems(_stack.back());
+
+		// remove _id field added by mongodb
+		if (obj.hasField("_id")) {
+			assert(strcmp("_id", last().fieldName()) == 0);
+			pop_last();
+		}
 	}
 
     void load_binary(void* address, std::size_t count);
