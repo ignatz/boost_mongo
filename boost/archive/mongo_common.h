@@ -23,6 +23,7 @@
 #include <boost/fusion/include/value_at_key.hpp>
 
 #include <boost/archive/basic_archive.hpp>
+#include <boost/serialization/item_version_type.hpp>
 
 namespace boost {
 namespace archive {

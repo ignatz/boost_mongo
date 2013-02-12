@@ -9,11 +9,34 @@ def configure(cfg):
     cfg.load('g++')
     cfg.load('boost')
 
-    cfg.check_boost(lib='serialization', uselib_store='BOOST_SERIALIZATION')
+    cfg.check_boost(
+            lib='serialization system thread filesystem',
+            uselib_store='BOOST4MONGO')
+
+    cfg.check_cxx(
+            lib='mongoclient',
+            uselib_store='MONGO')
 
 def build(bld):
-    bld (
-            target          = 'boost_mongo',
-            use             = ['BOOST_SERIALIZATION'],
+    bld(
+            target          = 'boost_mongo_inc',
             export_includes = '.',
+    )
+
+    bld.shlib(
+            target          = 'boost_mongo',
+            source          = bld.path.ant_glob('libs/**/*.cpp'),
+            use             = [
+                'boost_mongo_inc',
+                'BOOST4MONGO',
+                'MONGO',
+                ],
+            cxxflags        = [
+                '-O2',
+                '-Wall',
+                '-Wextra',
+                '-pedantic',
+                '-Wno-long-long',
+                '-Wno-variadic-macros',
+                ],
     )
