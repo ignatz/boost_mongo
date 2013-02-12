@@ -26,6 +26,7 @@ def build(bld):
     bld.shlib(
             target          = 'boost_mongo',
             source          = bld.path.ant_glob('libs/**/*.cpp'),
+            install_path    = 'lib',
             use             = [
                 'boost_mongo_inc',
                 'BOOST4MONGO',
