@@ -24,7 +24,7 @@ namespace boost {
 namespace archive {
 
 class mongo_oarchive :
-    public detail::common_oarchive<mongo_oarchive>
+	public detail::common_oarchive<mongo_oarchive>
 {
 protected:
 	friend class detail::interface_oarchive<mongo_oarchive>;
@@ -44,41 +44,41 @@ protected:
 		return *_stack.back();
 	}
 
-    // Anything not an attribute and not a name-value pair is an
-    // error and should be trapped here.
-    template<typename T>
+	// Anything not an attribute and not a name-value pair is an
+	// error and should be trapped here.
+	template<typename T>
 	typename boost::enable_if_c<
 			!fusion::result_of::has_key<meta_type_mapping, T>::type::value
 		>::type
-    save_override(T& t, int x)
-    {
-        // If your program fails to compile here, its most likely due to
-        // not specifying an nvp wrapper around the variable to
-        // be serialized.
+	save_override(T& t, int x)
+	{
+		// If your program fails to compile here, its most likely due to
+		// not specifying an nvp wrapper around the variable to
+		// be serialized.
 		BOOST_MPL_ASSERT((serialization::is_wrapper<T>));
-        this->detail::common_oarchive<mongo_oarchive>::save_override(t, x);
-    }
+		detail::common_oarchive<mongo_oarchive>::save_override(t, x);
+	}
 
-    template<typename T>
+	template<typename T>
 	typename boost::enable_if_c<
-			fusion::result_of::has_key<meta_type_mapping, T>::type::value
+	fusion::result_of::has_key<meta_type_mapping, T>::type::value
 		>::type
-    save_override(T const& t, int x)
-    {
+	save_override(T const& t, int x)
+	{
 		using namespace boost::fusion::result_of;
-		typename value_at_key<meta_type_mapping, T>::type tmp(
-			static_cast<typename value_at_key<meta_type_mapping, T>::type>(t));
+		typename value_at_key<meta_type_mapping, T>::type const& tmp =
+			static_cast<typename value_at_key<meta_type_mapping, T>::type>(t);
 		save_override(boost::serialization::make_nvp(
 				fusion::at_key<T>(meta_type_names), tmp), x);
 	}
 
-    // special treatment for name-value pairs.
-    template<typename T>
-    void save_override(boost::serialization::nvp<T> const& t, int x)
+	// special treatment for name-value pairs.
+	template<typename T>
+	void save_override(boost::serialization::nvp<T> const& t, int x)
 	{
 		// we have an enum type if name is NULL ... seriously!1!!
 		if (t.name() == NULL) {
-			save_enum(t.const_value());
+			save_enum_or_pointer(t.const_value(), x);
 			return;
 		}
 
@@ -95,11 +95,11 @@ protected:
 
 		_current = _stack.back();
 		_stack.pop_back();
-    }
+	}
 
-    // specific overrides for attributes - not name value pairs so we
-    // want to trap them before the above "fall through"
-	void save_override(class_name_type const& t, int);
+	// specific overrides for attributes - not name value pairs so we
+	// want to trap them before the above "fall through"
+	void save_override(class_name_type const& a, int);
 
 	template<typename T>
 	typename boost::enable_if_c<!detail::is_compressable<T>::value>::type
@@ -150,10 +150,15 @@ protected:
 	// required for strings
 	void save(std::string const& s);
 
-	// requirest for enum types (null pointer for the win!)
+	// required for pointer types
 	template<typename T>
-	void save_enum(T const&) { assert(false); }
-	void save_enum(int const& e) { save(e);}
+	void save_enum_or_pointer(T const& t, int x)
+	{
+		detail::common_oarchive<mongo_oarchive>::save_override(t, x);
+	}
+
+	// required for enum types
+	void save_enum_or_pointer(int const& e, int) { save(e);}
 
 public:
 	enum flags {
@@ -170,12 +175,12 @@ public:
 		};
 	};
 
-    mongo_oarchive(type& obj, unsigned int const flags = 0) :
+	mongo_oarchive(type& obj, unsigned int const flags = 0) :
 		_stack(), _current(&obj, detail::cond_deleter<type>(false)),
 		_name(NULL), _flags(flags)
 	{}
 
-    void save_binary(void const* address, std::size_t count);
+	void save_binary(void const* address, std::size_t count);
 };
 
 
@@ -184,23 +189,23 @@ namespace detail {
 template<>
 struct save_array_type<mongo_oarchive>
 {
-    template<typename T>
-    static void invoke(mongo_oarchive& ar, T const& t)
+	template<typename T>
+	static void invoke(mongo_oarchive& ar, T const& t)
 	{
-        typedef typename boost::remove_extent<T>::type value_type;
+		typedef typename boost::remove_extent<T>::type value_type;
 
-        // consider alignment
-        size_t const c = sizeof(t) / sizeof(value_type);
+		// consider alignment
+		size_t const c = sizeof(t) / sizeof(value_type);
 
-        boost::serialization::collection_size_type count(c);
-        ar << BOOST_SERIALIZATION_NVP(count);
-        ar << serialization::make_array(static_cast<value_type const*>(&t[0]), count);
-    }
+		boost::serialization::collection_size_type count(c);
+		ar << BOOST_SERIALIZATION_NVP(count);
+		ar << serialization::make_array(static_cast<value_type const*>(&t[0]), count);
+	}
 
-    static void invoke(mongo_oarchive& ar, char const* t)
+	static void invoke(mongo_oarchive& ar, char const* t)
 	{
 		ar.save_binary(t, std::strlen(t) + 1);
-    }
+	}
 };
 
 } // detail
@@ -221,9 +226,8 @@ inline
 void mongo_oarchive::save_override(
 	class_name_type const& t, int)
 {
-	_current->append("_class_name", t);
+	_current->append(fusion::at_key<class_name_type>(meta_type_names), t);
 }
-
 
 template<typename T>
 typename boost::enable_if_c<

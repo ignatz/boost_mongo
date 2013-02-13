@@ -26,7 +26,7 @@ namespace boost {
 namespace archive {
 
 class mongo_iarchive :
-    public detail::common_iarchive<mongo_iarchive>,
+	public detail::common_iarchive<mongo_iarchive>,
 	public detail::shared_ptr_helper
 {
 protected:
@@ -51,39 +51,39 @@ protected:
 		_stack.back().pop_front();
 	}
 
-    // Anything not an attribute and not a name-value pair is an
-    // error and should be trapped here.
-    template<typename T>
+	// Anything not an attribute and not a name-value pair is an
+	// error and should be trapped here.
+	template<typename T>
 	typename boost::enable_if_c<
 			!fusion::result_of::has_key<meta_type_mapping, T>::type::value
 		>::type
-    load_override(T& t, int x)
-    {
-        // If your program fails to compile here, its most likely due to
-        // not specifying an nvp wrapper around the variable to
-        // be serialized.
+	load_override(T& t, int x)
+	{
+		// If your program fails to compile here, its most likely due to
+		// not specifying an nvp wrapper around the variable to
+		// be serialized.
 		BOOST_MPL_ASSERT((serialization::is_wrapper<T>));
-        this->detail::common_iarchive<mongo_iarchive>::load_override(t, x);
-    }
+		this->detail::common_iarchive<mongo_iarchive>::load_override(t, x);
+	}
 
-    template<typename T>
+	template<typename T>
 	typename boost::enable_if_c<
 			fusion::result_of::has_key<meta_type_mapping, T>::type::value
 		>::type
-    load_override(T& t, int)
-    {
+	load_override(T& t, int)
+	{
 		using namespace boost::fusion::result_of;
 		load_field_and_cast<typename value_at_key<meta_type_mapping, T>::type&>(
 			fusion::at_key<T>(meta_type_names), t);
 	}
 
-    // special treatment for name-value pairs.
-    template<typename T>
-    void load_override(boost::serialization::nvp<T> const& t, int x)
+	// special treatment for name-value pairs.
+	template<typename T>
+	void load_override(boost::serialization::nvp<T> const& t, int x)
 	{
 		// we have an enum type if name is NULL ... seriously!1!!
 		if (t.name() == NULL) {
-			load_enum(t.value());
+			load_enum_or_pointer(t.value(), x);
 			return;
 		}
 
@@ -103,9 +103,7 @@ protected:
 		}
 
 		pop_last();
-    }
-
-	void load_override(class_name_type& t, int);
+	}
 
 	// specialization for any array type
 	template<typename T>
@@ -145,6 +143,15 @@ protected:
 		}
 	}
 
+	// class_id_optional must be ignored (like basic_xml_iarchive)
+	void load_override(class_id_optional_type&, int)
+	{
+		if (strcmp(last().fieldName(), fusion::at_key<class_id_optional_type>(
+				meta_type_names)) == 0) {
+			pop_last();
+		}
+	}
+
 	template<typename U, typename T>
 	void load_field_and_cast(const char* /*field_name*/, T& t)
 	{
@@ -165,15 +172,22 @@ protected:
 	load(T& t);
 
 	// required overload for boost serialization
+	void load(class_name_type& t);
 	void load(boost::serialization::collection_size_type& t);
 	void load(boost::serialization::item_version_type& t);
 
 	// required for strings
 	void load(std::string& s);
 
-    template<typename T>
-	void load_enum(T&) { assert(false); }
-	void load_enum(int& t) { last().Val(t); }
+	// required for pointer types
+	template<typename T>
+	void load_enum_or_pointer(T& t, int x)
+	{
+		detail::common_iarchive<mongo_iarchive>::load_override(t, x);
+	}
+
+	// required for enum types
+	void load_enum_or_pointer(int& t, int) { last().Val(t); }
 
 public:
 	enum flags {
@@ -191,7 +205,7 @@ public:
 		};
 	};
 
-    mongo_iarchive(mongo::BSONObj const& obj, unsigned int const flags = 0) :
+	mongo_iarchive(mongo::BSONObj const& obj, unsigned int const flags = 0) :
 		_stack(1), _flags(flags)
 	{
 		obj.elems(_stack.back());
@@ -203,7 +217,7 @@ public:
 		}
 	}
 
-    void load_binary(void* address, std::size_t count);
+	void load_binary(void* address, std::size_t count);
 };
 
 
@@ -212,8 +226,8 @@ namespace detail {
 template<>
 struct load_array_type<mongo_iarchive>
 {
-    template<typename T>
-    static void invoke(mongo_iarchive& ar, T& t)
+	template<typename T>
+	static void invoke(mongo_iarchive& ar, T& t)
 	{
 		typedef typename boost::remove_extent<T>::type value_type;
 
@@ -223,12 +237,12 @@ struct load_array_type<mongo_iarchive>
 		boost::serialization::collection_size_type count(c);
 		ar >> BOOST_SERIALIZATION_NVP(count);
 		ar >> serialization::make_array(static_cast<value_type*>(&t[0]), count);
-    }
+	}
 
-    static void invoke(mongo_iarchive& ar, char* t)
+	static void invoke(mongo_iarchive& ar, char* t)
 	{
 		ar.load_binary(t, std::strlen(t) + 1);
-    }
+	}
 };
 
 } // detail
@@ -245,13 +259,11 @@ namespace boost {
 namespace archive {
 
 inline
-void mongo_iarchive::load_override(class_name_type& t, int)
+void mongo_iarchive::load(class_name_type& t)
 {
-	std::string str = last().String();
-	t.t = new char[str.size()+1];
-	str.copy(t.t, std::string::npos);
+	std::string const& str = last().String();
+	str.copy(static_cast<char*>(t), std::string::npos);
 }
-
 
 template<typename T>
 typename boost::enable_if_c<

@@ -12,7 +12,7 @@ namespace boost {
 namespace archive {
 
 class json_iarchive :
-    public mongo_iarchive
+	public mongo_iarchive
 {
 private:
 	typedef std::istreambuf_iterator<char> iterator;
@@ -32,9 +32,8 @@ public:
 
 	~json_iarchive()
 	{
-	  delete _obj;
+		delete _obj;
 	}
-
 };
 
 } // archive

@@ -6,7 +6,7 @@
 #include <boost/serialization/nvp.hpp>
 #include <boost/serialization/string.hpp>
 
-struct Dummy
+struct Simple
 {
 	int a;
 	unsigned int b;
@@ -14,14 +14,14 @@ struct Dummy
 	Name n;
 	std::string str;
 
-	Dummy() :
+	Simple() :
 		a(0), b(0), n(x), str("me string")
 	{}
 
-	bool operator== (Dummy const& other) const
+	bool operator== (Simple const& other) const
 	{
 		// bitwise compare
-		return (strncmp((char*)this, (char*)&other, sizeof(Dummy)) == 0);
+		return (strncmp((char*)this, (char*)&other, sizeof(Simple)) == 0);
 	}
 
 private:
@@ -38,12 +38,13 @@ private:
 };
 
 inline
-std::ostream& operator<< (std::ostream& os, Dummy const& d)
+std::ostream& operator<< (std::ostream& os, Simple const& d)
 {
-	os << "a: "   << d.a << ", ";
-	os << "b: "   << d.b << ", ";
-	os << "n: "   << d.n << ", ";
-	os << "str: " << d.str;
-	os << std::endl;
+	os << "Simple: { "
+		<< "a: "   << d.a << ", "
+		<< "b: "   << d.b << ", "
+		<< "n: "   << d.n << ", "
+		<< "str: " << d.str
+		<< " }";
 	return os;
 }

@@ -9,7 +9,7 @@
 #include "boost/archive/mongo_oarchive.hpp"
 #include "boost/archive/mongo_iarchive.hpp"
 
-#include "test/Dummy.h"
+#include "test/Simple.h"
 
 using namespace boost::archive;
 using boost::serialization::make_nvp;
@@ -90,7 +90,7 @@ TEST(Database, Base)
 	const char name [] = { "myMap" };
 
 	// build reference types
-	typedef std::map<std::string, Dummy> map_t;
+	typedef std::map<std::string, Simple> map_t;
 	map_t x, y;
 
 	x["one"].a = 42;

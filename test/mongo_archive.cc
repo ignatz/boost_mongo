@@ -1,16 +1,19 @@
 #include <iostream>
+#include <sstream>
 #include <gtest/gtest.h>
 
 #include <boost/foreach.hpp>
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/map.hpp>
+#include <boost/serialization/shared_ptr.hpp>
 #include <boost/archive/xml_oarchive.hpp>
 
 #include "boost/archive/mongo_oarchive.hpp"
 #include "boost/archive/mongo_iarchive.hpp"
 
-#include "test/Dummy.h"
+#include "test/Simple.h"
+#include "test/Poly.h"
 
 using namespace boost::archive;
 using boost::serialization::make_nvp;
@@ -69,8 +72,8 @@ TYPED_TEST(MongoBuiltin, BaseTypes)
 TEST(MongoArchive, CustomType)
 {
 	const char name [] = { "myType" };
-	Dummy a, b;
-	a.n = static_cast<Dummy::Name>(42);
+	Simple a, b;
+	a.n = static_cast<Simple::Name>(42);
 	a.str = "hihihi";
 
 	mongo::BSONObjBuilder builder;
@@ -166,7 +169,7 @@ TEST(MongoArchive, SparseArray)
 TEST(MongoArchive, Map)
 {
 	const char name [] = { "myMap" };
-	typedef std::map<std::string, Dummy> map_t;
+	typedef std::map<std::string, Simple> map_t;
 	map_t x, y;
 
 	x["one"].a = 42;
@@ -188,4 +191,27 @@ TEST(MongoArchive, Map)
 
 	ASSERT_EQ(3u, y.size());
 	ASSERT_EQ(x, y);
+}
+
+TEST(MongoArchive, Abstract)
+{
+	const char name [] = { "myAbstractType" };
+	boost::shared_ptr<Base> x(new Poly (42));
+	boost::shared_ptr<Base> y;
+
+	Poly const& xp = dynamic_cast<Poly const&>(*x);
+	ASSERT_EQ(42, xp.member);
+
+	mongo::BSONObjBuilder builder;
+	mongo_oarchive out(builder);
+
+	out << make_nvp(name, x);
+
+	mongo::BSONObj o = builder.obj();
+
+	mongo_iarchive in(o);
+	in >> make_nvp(name, y);
+
+	Poly const& yp = dynamic_cast<Poly const&>(*y);
+	ASSERT_EQ(xp, yp);
 }

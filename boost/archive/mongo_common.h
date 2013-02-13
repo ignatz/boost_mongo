@@ -24,6 +24,7 @@
 
 #include <boost/archive/basic_archive.hpp>
 #include <boost/serialization/item_version_type.hpp>
+#include <boost/serialization/collection_size_type.hpp>
 
 namespace boost {
 namespace archive {
@@ -39,8 +40,9 @@ public:
 
 	void operator() (T* b)
 	{
-		if (cond)
+		if (cond) {
 			delete b;
+		}
 	}
 };
 
@@ -88,7 +90,7 @@ typedef fusion::map<
 		fusion::pair<unsigned long, long long>,
 		fusion::pair<unsigned long long, long long>, // problematic
 		fusion::pair<float, double>,
-		fusion::pair<long double, double>            // problematic
+		fusion::pair<long double, double> // problematic
 	> bson_type_mapping;
 
 
@@ -99,8 +101,8 @@ typedef fusion::map<
 		fusion::pair<archive::object_id_type, uint_least32_t>,
 		fusion::pair<archive::object_reference_type, uint_least32_t>, // strong typedef to object_id_type
 		fusion::pair<archive::version_type, uint_least32_t>,
-		fusion::pair<archive::tracking_type, bool>
-		//fusion::pair<archive::class_name_type, char const*>
+		fusion::pair<archive::tracking_type, bool>,
+		fusion::pair<archive::class_name_type, archive::class_name_type> // uses overloaded load function
 	> meta_type_mapping;
 
 typedef fusion::map<
@@ -110,8 +112,8 @@ typedef fusion::map<
 		fusion::pair<archive::object_id_type, char const*>,
 		fusion::pair<archive::object_reference_type, char const*>,
 		fusion::pair<archive::version_type, char const*>,
-		fusion::pair<archive::tracking_type, char const*>
-		//fusion::pair<archive::class_name_type, char const*>
+		fusion::pair<archive::tracking_type, char const*>,
+		fusion::pair<archive::class_name_type, char const*>
 	> meta_type_names_t;
 
 meta_type_names_t const meta_type_names(
@@ -121,8 +123,8 @@ meta_type_names_t const meta_type_names(
 	fusion::make_pair<archive::object_id_type>("_object_id"),
 	fusion::make_pair<archive::object_reference_type>("_object_reference"),
 	fusion::make_pair<archive::version_type>("_version"),
-	fusion::make_pair<archive::tracking_type>("_tracking")
-	//fusion::make_pair<archive::class_name_type>("_class_name")
+	fusion::make_pair<archive::tracking_type>("_tracking"),
+	fusion::make_pair<archive::class_name_type>("_class_name")
 );
 
 } // archive

@@ -6,7 +6,7 @@
 #include "boost/archive/json_oarchive.hpp"
 #include "boost/archive/json_iarchive.hpp"
 
-#include "test/Dummy.h"
+#include "test/Simple.h"
 
 using namespace boost::archive;
 using boost::serialization::make_nvp;
@@ -14,7 +14,7 @@ using boost::serialization::make_nvp;
 TEST(JSONArchive, Base)
 {
 	const char name [] = { "myType" };
-	Dummy a, b;
+	Simple a, b;
 	a.a = 42;
 	a.b = 23;
 
