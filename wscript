@@ -13,10 +13,6 @@ def configure(cfg):
             lib='serialization system thread filesystem',
             uselib_store='BOOST4MONGO')
 
-    cfg.check_cxx(
-            lib='mongoclient',
-            uselib_store='MONGO')
-
 def build(bld):
     bld(
             target          = 'boost_mongo_inc',
@@ -30,7 +26,6 @@ def build(bld):
             use             = [
                 'boost_mongo_inc',
                 'BOOST4MONGO',
-                'MONGO',
                 ],
             cxxflags        = [
                 '-O2',

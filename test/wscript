@@ -12,6 +12,8 @@ def configure(cfg):
     recurse(cfg)
     cfg.load('g++')
 
+    cfg.check_cxx(lib='mongoclient', uselib_store='MONGO')
+
 def build(bld):
     recurse(bld)
 
@@ -19,7 +21,7 @@ def build(bld):
         target          = 'main',
         features        = 'cxx cxxprogram',
         source          = bld.path.ant_glob('*.cc'),
-        use             = ['gtest', 'boost_mongo' ],
+        use             = ['gtest', 'boost_mongo', 'MONGO' ],
         install_path    = 'bin',
         cxxflags        = [
                 '-g',
