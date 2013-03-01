@@ -21,6 +21,7 @@
 #include <boost/fusion/include/has_key.hpp>
 #include <boost/fusion/include/at_key.hpp>
 #include <boost/fusion/include/value_at_key.hpp>
+#include <boost/utility/enable_if.hpp>
 
 #include <boost/archive/basic_archive.hpp>
 #include <boost/serialization/item_version_type.hpp>
@@ -54,13 +55,15 @@ private:
 	// better match if SFINAE doesn't fail
 	typedef char true_type;
 	template<typename U>
-	static true_type fun(char[sizeof(&U::operator==)]);
+	static typename boost::enable_if_c<sizeof(&U::operator==), true_type>::type
+	test(char*);
 
 	typedef int false_type;
 	template<typename U>
-	static false_type fun(...);
+	static false_type test(...);
 public:
-	static const bool value = (sizeof(fun<T>(0))==sizeof(true_type));
+	static const bool value =
+		(sizeof(test<T>(NULL))==sizeof(true_type));
 };
 
 

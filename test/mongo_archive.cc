@@ -1,9 +1,11 @@
 #include <iostream>
 #include <sstream>
+#include <vector>
 #include <gtest/gtest.h>
 
 #include <boost/foreach.hpp>
 #include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/shared_ptr.hpp>
@@ -12,6 +14,7 @@
 #include "boost/archive/mongo_oarchive.hpp"
 #include "boost/archive/mongo_iarchive.hpp"
 
+#include "test/Plain.h"
 #include "test/Simple.h"
 #include "test/Poly.h"
 
@@ -106,6 +109,20 @@ TEST(MongoArchive, AllMembersRegressionTest)
 	mongo::BSONObj o = builder.obj();
 	mongo::BSONElement elem = o.getField(name).embeddedObject().getField("elems");
 	ASSERT_EQ(static_cast<int>(a.size()+1), elem.embeddedObject().nFields());
+}
+
+TEST(MongoArchive, NotCompressableRegressionTest)
+{
+	const char name [] = { "myUncompressableVector" };
+	mongo::BSONObjBuilder builder;
+	mongo_oarchive mongo(builder);
+
+	ASSERT_TRUE (boost::archive::detail::has_compare<Simple>::value);
+	ASSERT_FALSE(boost::archive::detail::has_compare<Plain>::value);
+	ASSERT_FALSE(boost::archive::detail::is_compressable<Plain>::value);
+
+	std::vector<Plain> a(42);
+	mongo << make_nvp(name, a);
 }
 
 TEST(MongoArchive, Array)
