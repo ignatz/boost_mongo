@@ -26,6 +26,7 @@
 #include <boost/archive/basic_archive.hpp>
 #include <boost/serialization/item_version_type.hpp>
 #include <boost/serialization/collection_size_type.hpp>
+#include <boost/type_traits/has_equal_to.hpp>
 
 namespace boost {
 namespace archive {
@@ -49,30 +50,11 @@ public:
 
 
 template<typename T>
-class has_compare
-{
-private:
-	// better match if SFINAE doesn't fail
-	typedef char true_type;
-	template<typename U>
-	static typename boost::enable_if_c<sizeof(&U::operator==), true_type>::type
-	test(char*);
-
-	typedef int false_type;
-	template<typename U>
-	static false_type test(...);
-public:
-	static const bool value =
-		(sizeof(test<T>(NULL))==sizeof(true_type));
-};
-
-
-template<typename T>
 struct is_compressable
 {
 	static const bool value =
 		boost::has_trivial_default_constructor<T>::value &&
-		(detail::has_compare<T>::value || boost::is_arithmetic<T>::value);
+		(boost::has_equal_to<T>::value || boost::is_arithmetic<T>::value);
 };
 
 } // detail

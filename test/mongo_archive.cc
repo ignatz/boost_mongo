@@ -51,6 +51,9 @@ struct MongoBuiltin :
 	typedef T type;
 };
 
+struct ExternEqual {};
+bool operator== (ExternEqual const&, ExternEqual const&) { return false; }
+
 TYPED_TEST_CASE(MongoBuiltin, types);
 
 TYPED_TEST(MongoBuiltin, BaseTypes)
@@ -117,8 +120,9 @@ TEST(MongoArchive, NotCompressableRegressionTest)
 	mongo::BSONObjBuilder builder;
 	mongo_oarchive mongo(builder);
 
-	ASSERT_TRUE (boost::archive::detail::has_compare<Simple>::value);
-	ASSERT_FALSE(boost::archive::detail::has_compare<Plain>::value);
+	ASSERT_TRUE (boost::has_equal_to<Simple>::value);
+	ASSERT_TRUE (boost::has_equal_to<ExternEqual>::value);
+	ASSERT_FALSE(boost::has_equal_to<Plain>::value);
 	ASSERT_FALSE(boost::archive::detail::is_compressable<Plain>::value);
 
 	std::vector<Plain> a(42);
