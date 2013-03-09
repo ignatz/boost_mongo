@@ -201,11 +201,6 @@ struct save_array_type<mongo_oarchive>
 		ar << BOOST_SERIALIZATION_NVP(count);
 		ar << serialization::make_array(static_cast<value_type const*>(&t[0]), count);
 	}
-
-	static void invoke(mongo_oarchive& ar, char const* t)
-	{
-		ar.save_binary(t, std::strlen(t) + 1);
-	}
 };
 
 } // detail

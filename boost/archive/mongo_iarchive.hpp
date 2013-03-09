@@ -234,14 +234,15 @@ struct load_array_type<mongo_iarchive>
 		// consider alignment
 		size_t const c = sizeof(t) / sizeof(value_type);
 
-		boost::serialization::collection_size_type count(c);
+		boost::serialization::collection_size_type count;
 		ar >> BOOST_SERIALIZATION_NVP(count);
+		//ar.pop_last();
+		if(static_cast<std::size_t>(count) > c) {
+			using boost::serialization::throw_exception;
+			throw_exception(archive_exception(
+					archive_exception::array_size_too_short));
+		}
 		ar >> serialization::make_array(static_cast<value_type*>(&t[0]), count);
-	}
-
-	static void invoke(mongo_iarchive& ar, char* t)
-	{
-		ar.load_binary(t, std::strlen(t) + 1);
 	}
 };
 

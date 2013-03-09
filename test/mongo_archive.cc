@@ -10,6 +10,8 @@
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/archive/xml_oarchive.hpp>
+#include <boost/type_traits/is_same.hpp>
+#include <boost/numeric/conversion/bounds.hpp>
 
 #include "boost/archive/mongo_oarchive.hpp"
 #include "boost/archive/mongo_iarchive.hpp"
@@ -42,7 +44,7 @@ typedef ::testing::Types<
 		float,
 		long double,
 		double
-	> types;
+	> builtin_types;
 
 template<typename T>
 struct MongoBuiltin :
@@ -54,24 +56,55 @@ struct MongoBuiltin :
 struct ExternEqual {};
 bool operator== (ExternEqual const&, ExternEqual const&) { return false; }
 
-TYPED_TEST_CASE(MongoBuiltin, types);
+TYPED_TEST_CASE(MongoBuiltin, builtin_types);
 
 TYPED_TEST(MongoBuiltin, BaseTypes)
 {
-	mongo::BSONObjBuilder builder;
-	mongo_oarchive out(builder);
+	typedef typename TestFixture::type type;
+	{
+		mongo::BSONObjBuilder builder;
+		mongo_oarchive out(builder);
 
-	typename TestFixture::type a, b;
-	a = 42;
-	out << make_nvp("value", a);
+		type a, b;
+		a = 42;
+		out << make_nvp("value", a);
 
-	mongo::BSONObj obj = builder.obj();
-	ASSERT_TRUE(!obj.toString().empty());
+		mongo::BSONObj obj = builder.obj();
+		ASSERT_TRUE(!obj.toString().empty());
 
-	mongo_iarchive in(obj);
-	in >> make_nvp("value", b);
+		mongo_iarchive in(obj);
+		in >> make_nvp("value", b);
 
-	ASSERT_EQ(a, b);
+		ASSERT_EQ(a, b);
+	}
+
+	// early abort for long double, it is not supported by mongo.
+	// Therefore, the following test inevitably fails.
+	if (boost::is_same<type, long double>::value)
+		return;
+
+	{
+		using namespace boost::numeric;
+		mongo::BSONObjBuilder builder;
+		mongo_oarchive out(builder);
+
+		type a[3];
+		type b[3];
+		a[0] = bounds<type>::highest();
+		a[1] = bounds<type>::smallest();
+		a[2] = bounds<type>::lowest();
+		out << make_nvp("value", a);
+
+		mongo::BSONObj obj = builder.obj();
+		ASSERT_TRUE(!obj.toString().empty());
+
+		mongo_iarchive in(obj);
+		in >> make_nvp("value", b);
+
+		for (size_t ii = 0; ii<3; ++ii) {
+			EXPECT_EQ(a[ii], b[ii]);
+		}
+	}
 }
 
 
