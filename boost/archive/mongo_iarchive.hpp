@@ -39,13 +39,13 @@ protected:
 	std::vector<value_type> _stack;
 	unsigned int const _flags;
 
-	type& last()
+	type& top()
 	{
 		assert(_stack.size()>0 && _stack.back().size()>0);
 		return _stack.back().front();
 	}
 
-	void pop_last()
+	void pop_element()
 	{
 		assert(_stack.size()>0 && _stack.back().size()>0);
 		_stack.back().pop_front();
@@ -87,11 +87,11 @@ protected:
 			return;
 		}
 
-		assert(strcmp(t.name(), last().fieldName()) == 0);
-		bool const is_obj = last().isABSONObj();
+		assert(strcmp(t.name(), top().fieldName()) == 0);
+		bool const is_obj = top().isABSONObj();
 		if (is_obj) {
 			value_type tmp;
-			last().Obj().elems(tmp);
+			top().Obj().elems(tmp);
 			_stack.push_back(value_type());
 			_stack.back().swap(tmp);
 		}
@@ -102,7 +102,7 @@ protected:
 			_stack.pop_back();
 		}
 
-		pop_last();
+		pop_element();
 	}
 
 	// specialization for any array type
@@ -127,14 +127,14 @@ protected:
 		if (!(_flags & sparse_array)) {
 			for (size_t ii = 0; ii<a.count(); ++ii)
 			{
-				assert(boost::lexical_cast<std::string>(ii) == last().fieldName());
-				load_override(make_nvp(last().fieldName(), *(a.address()+ii)), x);
+				assert(boost::lexical_cast<std::string>(ii) == top().fieldName());
+				load_override(make_nvp(top().fieldName(), *(a.address()+ii)), x);
 			}
 		} else {
 			for (size_t ii = 0; ii<a.count(); ++ii)
 			{
-				if (_stack.back().size() && boost::lexical_cast<std::string>(ii) == last().fieldName()) {
-					load_override(make_nvp(last().fieldName(), *(a.address()+ii)), x);
+				if (_stack.back().size() && boost::lexical_cast<std::string>(ii) == top().fieldName()) {
+					load_override(make_nvp(top().fieldName(), *(a.address()+ii)), x);
 				} else {
 					*(a.address()+ii) = T();
 				}
@@ -146,9 +146,9 @@ protected:
 	// class_id_optional must be ignored (like basic_xml_iarchive)
 	void load_override(class_id_optional_type&, int)
 	{
-		if (strcmp(last().fieldName(), fusion::at_key<class_id_optional_type>(
+		if (strcmp(top().fieldName(), fusion::at_key<class_id_optional_type>(
 				meta_type_names)) == 0) {
-			pop_last();
+			pop_element();
 		}
 	}
 
@@ -156,7 +156,7 @@ protected:
 	void load_field_and_cast(const char* /*field_name*/, T& t)
 	{
 		load(static_cast<U>(t));
-		pop_last();
+		pop_element();
 	}
 
 	template<typename T>
@@ -187,7 +187,7 @@ protected:
 	}
 
 	// required for enum types
-	void load_enum_or_pointer(int& t, int) { last().Val(t); }
+	void load_enum_or_pointer(int& t, int) { top().Val(t); }
 
 public:
 	enum flags {
@@ -212,8 +212,8 @@ public:
 
 		// remove _id field added by mongodb
 		if (obj.hasField("_id")) {
-			assert(strcmp("_id", last().fieldName()) == 0);
-			pop_last();
+			assert(strcmp("_id", top().fieldName()) == 0);
+			pop_element();
 		}
 	}
 
@@ -236,7 +236,6 @@ struct load_array_type<mongo_iarchive>
 
 		boost::serialization::collection_size_type count;
 		ar >> BOOST_SERIALIZATION_NVP(count);
-		//ar.pop_last();
 		if(static_cast<std::size_t>(count) > c) {
 			using boost::serialization::throw_exception;
 			throw_exception(archive_exception(
@@ -262,7 +261,7 @@ namespace archive {
 inline
 void mongo_iarchive::load(class_name_type& t)
 {
-	std::string const& str = last().String();
+	std::string const& str = top().String();
 	str.copy(static_cast<char*>(t), std::string::npos);
 }
 
@@ -273,9 +272,9 @@ typename boost::enable_if_c<
 mongo_iarchive::load(T& t)
 {
 	if (_flags & is_json)
-		t = last().number();
+		t = top().number();
 	else
-		last().Val(t);
+		top().Val(t);
 }
 
 template<typename T>
@@ -285,11 +284,11 @@ typename boost::enable_if_c<
 mongo_iarchive::load(T& t)
 {
 	if (_flags & is_json)
-		t = last().number();
+		t = top().number();
 	else {
 		using namespace boost::fusion::result_of;
 		typename value_at_key<bson_type_mapping, T>::type tmp;
-		last().Val(tmp);
+		top().Val(tmp);
 		t = tmp;
 	}
 }
@@ -309,14 +308,14 @@ void mongo_iarchive::load(boost::serialization::item_version_type& t)
 inline
 void mongo_iarchive::load(std::string& s)
 {
-	last().Val(s);
+	top().Val(s);
 }
 
 
 inline
 void mongo_iarchive::load_binary(void* address, std::size_t count)
 {
-	std::string str = last().String();
+	std::string str = top().String();
 	assert(str.size() == count);
 	str.copy(static_cast<char*>(address), count);
 }

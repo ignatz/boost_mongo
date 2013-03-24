@@ -16,6 +16,7 @@
 #include "boost/archive/mongo_oarchive.hpp"
 #include "boost/archive/mongo_iarchive.hpp"
 
+#include "test/builtins.h"
 #include "test/Plain.h"
 #include "test/Simple.h"
 #include "test/Poly.h"
@@ -23,153 +24,135 @@
 using namespace boost::archive;
 using boost::serialization::make_nvp;
 
-typedef ::testing::Types<
-		bool,
-		char,
-		signed char,
-		unsigned char,
-		wchar_t,
-#if __cplusplus >= 201103L
-		char16_t,
-		char32_t,
-#endif
-		short,
-		unsigned short,
-		int,
-		unsigned int,
-		long,
-		unsigned long,
-		long long,
-		unsigned long long,
-		float,
-		long double,
-		double
-	> builtin_types;
+struct ExternEqual {};
+bool operator== (ExternEqual const&, ExternEqual const&) { return false; }
+
+
+class MongoArchiveTest :
+	public ::testing::Test
+{
+protected:
+	MongoArchiveTest() :
+		mBuilder(),
+		out(mBuilder)
+	{}
+
+	mongo::BSONObj getObject()
+	{
+		return mBuilder.obj();
+	}
+
+	template<typename T>
+	void serialize(T const& val)
+	{
+		out << make_nvp(name, val);
+	}
+
+	template<typename U>
+	void deserialize(mongo::BSONObj const& obj, U& b) const
+	{
+		mongo_iarchive in(obj);
+		in >> make_nvp(name, b);
+	}
+
+	static const char name[];
+
+private:
+	mongo::BSONObjBuilder mBuilder;
+	mongo_oarchive out;
+};
+
+const char MongoArchiveTest::name [] = { "fancyName" };
+
 
 template<typename T>
 struct MongoBuiltin :
-	public ::testing::Test
+	public MongoArchiveTest
 {
 	typedef T type;
 };
-
-struct ExternEqual {};
-bool operator== (ExternEqual const&, ExternEqual const&) { return false; }
 
 TYPED_TEST_CASE(MongoBuiltin, builtin_types);
 
 TYPED_TEST(MongoBuiltin, BaseTypes)
 {
+	using namespace boost::numeric;
 	typedef typename TestFixture::type type;
+
+	type a[4], b[4];
+	a[0] = 42; // a randomly but carefully chosen number
+	a[1] = bounds<type>::highest();
+	a[2] = bounds<type>::smallest();
+	a[3] = bounds<type>::lowest();
+
+	this->serialize(a);
+
+	mongo::BSONObj obj = this->getObject();
+	ASSERT_TRUE(!obj.toString().empty());
+
+	this->deserialize(obj, b);
+
+	for (size_t ii = 0; ii<3; ++ii)
 	{
-		mongo::BSONObjBuilder builder;
-		mongo_oarchive out(builder);
+		EXPECT_EQ(a[ii], b[ii]);
 
-		type a, b;
-		a = 42;
-		out << make_nvp("value", a);
-
-		mongo::BSONObj obj = builder.obj();
-		ASSERT_TRUE(!obj.toString().empty());
-
-		mongo_iarchive in(obj);
-		in >> make_nvp("value", b);
-
-		ASSERT_EQ(a, b);
-	}
-
-	// early abort for long double, it is not supported by mongo.
-	// Therefore, the following test inevitably fails.
-	if (boost::is_same<type, long double>::value)
-		return;
-
-	{
-		using namespace boost::numeric;
-		mongo::BSONObjBuilder builder;
-		mongo_oarchive out(builder);
-
-		type a[3];
-		type b[3];
-		a[0] = bounds<type>::highest();
-		a[1] = bounds<type>::smallest();
-		a[2] = bounds<type>::lowest();
-		out << make_nvp("value", a);
-
-		mongo::BSONObj obj = builder.obj();
-		ASSERT_TRUE(!obj.toString().empty());
-
-		mongo_iarchive in(obj);
-		in >> make_nvp("value", b);
-
-		for (size_t ii = 0; ii<3; ++ii) {
-			EXPECT_EQ(a[ii], b[ii]);
-		}
+		// early abort for long double, it is not supported by mongo.
+		// Therefore, the subsequent tests will inevitably fail.
+		if (boost::is_same<type, long double>::value)
+			break;
 	}
 }
 
 
-TEST(MongoArchive, CustomType)
+TEST_F(MongoArchiveTest, SimpleType)
 {
-	const char name [] = { "myType" };
 	Simple a, b;
 	a.n = static_cast<Simple::Name>(42);
 	a.str = "hihihi";
+	serialize(a);
 
-	mongo::BSONObjBuilder builder;
-	mongo_oarchive out(builder);
-
-	out << make_nvp(name, a);
-
-	mongo::BSONObj o = builder.obj();
-	int e = o.getField(name).embeddedObject().getField("enum").Int();
-	//ASSERT_EQ("hello",  o.getField(name).embeddedObject().getField("ch").String());
-	ASSERT_EQ("hihihi",  o.getField(name).embeddedObject().getField("str").String());
-
+	mongo::BSONObj obj = getObject();
+	int e = obj.getField(name).embeddedObject().getField("enum").Int();
+	ASSERT_EQ(a.str,  obj.getField(name).embeddedObject().getField("str").String());
 	ASSERT_EQ((int)a.n, e);
 
-	mongo_iarchive in(o);
-	in >> make_nvp(name, b);
-
+	deserialize(obj, b);
 	ASSERT_EQ(a, b);
 }
 
-TEST(MongoArchive, AllMembersRegressionTest)
+TEST_F(MongoArchiveTest, AllMembersRegressionTest)
 {
-	const char name [] = { "myArray" };
-	mongo::BSONObjBuilder builder;
-	mongo_oarchive mongo(builder);
+	boost::array<int, 42> a, b;
+	serialize(a);
 
-	boost::array<int, 42> a;
-	mongo << make_nvp(name, a);
-
-	mongo::BSONObj o = builder.obj();
-	mongo::BSONElement elem = o.getField(name).embeddedObject().getField("elems");
+	mongo::BSONObj obj = getObject();
+	mongo::BSONElement elem = obj.getField(name).embeddedObject().getField("elems");
 	ASSERT_EQ(static_cast<int>(a.size()+1), elem.embeddedObject().nFields());
+
+	deserialize(obj, b);
+	ASSERT_TRUE(std::equal(a.begin(), a.end(), b.begin()));
 }
 
-TEST(MongoArchive, NotCompressableRegressionTest)
+#include <boost/archive/xml_oarchive.hpp>
+TEST_F(MongoArchiveTest, NotCompressableRegressionTest)
 {
-	const char name [] = { "myUncompressableVector" };
-	mongo::BSONObjBuilder builder;
-	mongo_oarchive mongo(builder);
-
 	ASSERT_TRUE (boost::has_equal_to<Simple>::value);
 	ASSERT_TRUE (boost::has_equal_to<ExternEqual>::value);
 	ASSERT_FALSE(boost::has_equal_to<Plain>::value);
 	ASSERT_FALSE(boost::archive::detail::is_compressable<Plain>::value);
 
 	std::vector<Plain> a(42);
-	mongo << make_nvp(name, a);
+	std::vector<Plain> b;
+
+	serialize(a);
+	deserialize(getObject(), b);
+
+	ASSERT_EQ(a.size(), b.size());
 }
 
-TEST(MongoArchive, Array)
+TEST_F(MongoArchiveTest, Array)
 {
-	const char name [] = { "myArray" };
-	typedef boost::array<int, 1024> type;
-	type a, b;
-
-	mongo::BSONObjBuilder builder;
-	mongo_oarchive out(builder);
+	boost::array<int, 1024> a, b;
 
 	size_t cnt = 0;
 	BOOST_FOREACH(int& val, a)
@@ -177,55 +160,46 @@ TEST(MongoArchive, Array)
 		val = cnt++;
 	}
 
-	out << make_nvp(name, a);
-
-	mongo::BSONObj o = builder.obj();
-
-	mongo_iarchive in(o);
-	in >> make_nvp(name, b);
+	serialize(a);
+	deserialize(getObject(), b);
 
 	ASSERT_EQ(a, b);
 }
 
-TEST(MongoArchive, SparseArray)
+TEST_F(MongoArchiveTest, SparseArray)
 {
-	const char name [] = { "myArray" };
-	typedef boost::array<int, 1024> type;
-	type a, b;
+	boost::array<int, 1024> x, y;
 
-	mongo::BSONObjBuilder builder;
-	mongo_oarchive out(builder, mongo_oarchive::sparse_array);
-
-	// zero all entries
-	BOOST_FOREACH(int& val, a)
+	// zero all entries first
+	BOOST_FOREACH(int& val, x)
 	{
 		val = 0;
 	}
 
 	// set some to individual values
 	int start=10, range=10;
-	for(int ii = start; ii<start+range; ++ii)
-		a[ii] = ii;
+	for(int ii = start; ii<start+range; ++ii) {
+		x[ii] = ii;
+	}
+	ASSERT_NE(x, y);
 
-	out << make_nvp(name, a);
+	mongo::BSONObjBuilder builder;
+	mongo_oarchive oa(builder, mongo_oarchive::sparse_array);
+	oa << make_nvp(name, x);
 
-	mongo::BSONObj o = builder.obj();
+	mongo::BSONObj obj = builder.obj();
 
-	mongo::BSONElement elem = o.getField(name).embeddedObject().getField("elems");
+	mongo::BSONElement elem = obj.getField(name).embeddedObject().getField("elems");
 	ASSERT_EQ(range+1, elem.embeddedObject().nFields());
 
-	mongo_iarchive in(o, mongo_iarchive::sparse_array);
-	in >> make_nvp(name, b);
-
-	ASSERT_EQ(a, b);
+	mongo_iarchive in(obj, mongo_iarchive::sparse_array);
+	in >> make_nvp(name, y);
+	ASSERT_EQ(x, y);
 }
 
-TEST(MongoArchive, Map)
+TEST_F(MongoArchiveTest, Map)
 {
-	const char name [] = { "myMap" };
-	typedef std::map<std::string, Simple> map_t;
-	map_t x, y;
-
+	std::map<std::string, Simple> x, y;
 	x["one"].a = 42;
 	x["one"].b = 23;
 	x["two"].a = 5;
@@ -233,38 +207,21 @@ TEST(MongoArchive, Map)
 	ASSERT_EQ(3u, x.size());
 	ASSERT_NE(x, y);
 
-	mongo::BSONObjBuilder builder;
-	mongo_oarchive out(builder);
-
-	out << make_nvp(name, x);
-
-	mongo::BSONObj o = builder.obj();
-
-	mongo_iarchive in(o);
-	in >> make_nvp(name, y);
+	serialize(x);
+	deserialize(getObject(), y);
 
 	ASSERT_EQ(3u, y.size());
 	ASSERT_EQ(x, y);
 }
 
-TEST(MongoArchive, Abstract)
+TEST_F(MongoArchiveTest, Abstract)
 {
-	const char name [] = { "myAbstractType" };
-	boost::shared_ptr<Base> x(new Poly (42));
-	boost::shared_ptr<Base> y;
-
+	boost::shared_ptr<Base> x(new Poly (42)), y;
 	Poly const& xp = dynamic_cast<Poly const&>(*x);
 	ASSERT_EQ(42, xp.member);
 
-	mongo::BSONObjBuilder builder;
-	mongo_oarchive out(builder);
-
-	out << make_nvp(name, x);
-
-	mongo::BSONObj o = builder.obj();
-
-	mongo_iarchive in(o);
-	in >> make_nvp(name, y);
+	serialize(x);
+	deserialize(getObject(), y);
 
 	Poly const& yp = dynamic_cast<Poly const&>(*y);
 	ASSERT_EQ(xp, yp);

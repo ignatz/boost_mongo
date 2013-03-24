@@ -5,6 +5,7 @@
 // (See http://www.boost.org/LICENSE_1_0.txt)
 
 #include <vector>
+#include <utility>
 #include <cstddef>
 #include <string>
 
@@ -33,15 +34,20 @@ protected:
 	typedef mongo::BSONObjBuilder type;
 	typedef boost::shared_ptr<type> value_type;
 
-	std::vector<value_type> _stack;
-	value_type _current;
-	char const* _name;
+	std::vector<std::pair<value_type, bool /*inserted*/> > _stack;
+	char const* _name; // stores current name of nvp for builtins
 	unsigned int const _flags;
 
-	type& last()
+	std::pair<value_type, bool>& top()
 	{
 		assert(_stack.size()>0);
-		return *_stack.back();
+		return _stack.back();
+	}
+
+	std::pair<value_type, bool>& previous()
+	{
+		assert(_stack.size()>1);
+		return *(_stack.end()-2);
 	}
 
 	// Anything not an attribute and not a name-value pair is an
@@ -61,7 +67,7 @@ protected:
 
 	template<typename T>
 	typename boost::enable_if_c<
-	fusion::result_of::has_key<meta_type_mapping, T>::type::value
+			fusion::result_of::has_key<meta_type_mapping, T>::type::value
 		>::type
 	save_override(T const& t, int x)
 	{
@@ -83,17 +89,16 @@ protected:
 		}
 
 		_name = t.name();
-		_stack.push_back(_current);
-		_current = value_type(new type);
+		_stack.push_back(std::make_pair(value_type(new type), false));
 
 		detail::common_oarchive<mongo_oarchive>::save_override(t.const_value(), x);
 
-		mongo::BSONObj obj = _current->obj();
-		if (!obj.isEmpty()) {
-			last().append(t.name(), obj);
-		}
+		// builtin data types append themselves as "name : value" pair, however
+		// custom data types need to be inserted as "name : { value }" pair.
+		bool const inserted = top().second;
+		if (!inserted)
+			previous().first->append(t.name(), top().first->obj());
 
-		_current = _stack.back();
 		_stack.pop_back();
 	}
 
@@ -176,7 +181,7 @@ public:
 	};
 
 	mongo_oarchive(type& obj, unsigned int const flags = 0) :
-		_stack(), _current(&obj, detail::cond_deleter<type>(false)),
+		_stack(1, std::make_pair(value_type(&obj, detail::cond_deleter<type>(false)), false)),
 		_name(NULL), _flags(flags)
 	{}
 
@@ -221,7 +226,7 @@ inline
 void mongo_oarchive::save_override(
 	class_name_type const& t, int)
 {
-	_current->append(fusion::at_key<class_name_type>(meta_type_names), t);
+	top().first->append(fusion::at_key<class_name_type>(meta_type_names), t);
 }
 
 template<typename T>
@@ -230,7 +235,8 @@ typename boost::enable_if_c<
 	>::type
 mongo_oarchive::save(T const& t)
 {
-	last().append(_name, t);
+	previous().first->append(_name, t);
+	top().second = true;
 }
 
 template<typename T>
@@ -240,8 +246,9 @@ typename boost::enable_if_c<
 mongo_oarchive::save(T const& t)
 {
 	using namespace boost::fusion::result_of;
-	last().append(_name,
+	previous().first->append(_name,
 		static_cast<typename value_at_key<bson_type_mapping, T>::type const&>(t));
+	top().second = true;
 }
 
 inline
@@ -267,7 +274,8 @@ inline
 void mongo_oarchive::save_binary(
 	void const* address, std::size_t count)
 {
-	last().append(_name, static_cast<char const*>(address), count);
+	previous().first->append(_name, static_cast<char const*>(address), count);
+	top().second = true;
 }
 
 } // namespace archive
