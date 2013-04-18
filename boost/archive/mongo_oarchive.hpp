@@ -73,7 +73,7 @@ protected:
 	{
 		using namespace boost::fusion::result_of;
 		typename value_at_key<meta_type_mapping, T>::type const& tmp =
-			static_cast<typename value_at_key<meta_type_mapping, T>::type>(t);
+			typename value_at_key<meta_type_mapping, T>::type(t);
 		save_override(boost::serialization::make_nvp(
 				fusion::at_key<T>(meta_type_names), tmp), x);
 	}
@@ -247,20 +247,20 @@ mongo_oarchive::save(T const& t)
 {
 	using namespace boost::fusion::result_of;
 	previous().first->append(_name,
-		static_cast<typename value_at_key<bson_type_mapping, T>::type const&>(t));
+		typename value_at_key<bson_type_mapping, T>::type(t));
 	top().second = true;
 }
 
 inline
 void mongo_oarchive::save(boost::serialization::collection_size_type const& t)
 {
-	save(static_cast<size_t>(t));
+	save(size_t(t));
 }
 
 inline
 void mongo_oarchive::save(boost::serialization::item_version_type const& t)
 {
-	save(static_cast<unsigned int>(t));
+	save(unsigned(t));
 }
 
 inline

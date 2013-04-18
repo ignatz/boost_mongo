@@ -74,16 +74,19 @@ struct MongoBuiltin :
 
 TYPED_TEST_CASE(MongoBuiltin, builtin_types);
 
-TYPED_TEST(MongoBuiltin, BaseTypes)
+TYPED_TEST(MongoBuiltin, BuiltinTypes)
 {
 	using namespace boost::numeric;
 	typedef typename TestFixture::type type;
 
-	type a[4], b[4];
-	a[0] = 42; // a randomly but carefully chosen number
-	a[1] = bounds<type>::highest();
-	a[2] = bounds<type>::smallest();
-	a[3] = bounds<type>::lowest();
+	size_t const size = 6;
+	type a[size], b[size];
+	a[0] = 0;
+	a[1] = 1;
+	a[2] = 42; // a randomly but carefully chosen number
+	a[3] = bounds<type>::highest();
+	a[4] = bounds<type>::smallest();
+	a[5] = bounds<type>::lowest();
 
 	this->serialize(a);
 
@@ -92,13 +95,13 @@ TYPED_TEST(MongoBuiltin, BaseTypes)
 
 	this->deserialize(obj, b);
 
-	for (size_t ii = 0; ii<3; ++ii)
+	for (size_t ii = 0; ii<size; ++ii)
 	{
 		EXPECT_EQ(a[ii], b[ii]);
 
 		// early abort for long double, it is not supported by mongo.
 		// Therefore, the subsequent tests will inevitably fail.
-		if (boost::is_same<type, long double>::value)
+		if (boost::is_same<type, long double>::value && ii == 2)
 			break;
 	}
 }

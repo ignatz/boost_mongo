@@ -73,7 +73,7 @@ protected:
 	load_override(T& t, int)
 	{
 		using namespace boost::fusion::result_of;
-		load_field_and_cast<typename value_at_key<meta_type_mapping, T>::type&>(
+		load_field_and_cast<typename value_at_key<meta_type_mapping, T>::type>(
 			fusion::at_key<T>(meta_type_names), t);
 	}
 
@@ -155,7 +155,7 @@ protected:
 	template<typename U, typename T>
 	void load_field_and_cast(const char* /*field_name*/, T& t)
 	{
-		load(static_cast<U>(t));
+		load(static_cast<U&>(t));
 		pop_element();
 	}
 
@@ -178,6 +178,11 @@ protected:
 
 	// required for strings
 	void load(std::string& s);
+
+	// required for JSON deserialization
+	void load(bool& b);
+	void load(long& l);
+	void load(long long& ll);
 
 	// required for pointer types
 	template<typename T>
@@ -236,7 +241,7 @@ struct load_array_type<mongo_iarchive>
 
 		boost::serialization::collection_size_type count;
 		ar >> BOOST_SERIALIZATION_NVP(count);
-		if(static_cast<std::size_t>(count) > c) {
+		if(size_t(count) > c) {
 			using boost::serialization::throw_exception;
 			throw_exception(archive_exception(
 					archive_exception::array_size_too_short));
@@ -257,13 +262,6 @@ BOOST_SERIALIZATION_USE_ARRAY_OPTIMIZATION(boost::archive::mongo_iarchive)
 
 namespace boost {
 namespace archive {
-
-inline
-void mongo_iarchive::load(class_name_type& t)
-{
-	std::string const& str = top().String();
-	str.copy(static_cast<char*>(t), std::string::npos);
-}
 
 template<typename T>
 typename boost::enable_if_c<
@@ -294,6 +292,13 @@ mongo_iarchive::load(T& t)
 }
 
 inline
+void mongo_iarchive::load(class_name_type& t)
+{
+	std::string const& str = top().String();
+	str.copy(static_cast<char*>(t), std::string::npos);
+}
+
+inline
 void mongo_iarchive::load(boost::serialization::collection_size_type& t)
 {
 	load(static_cast<size_t&>(t));
@@ -311,6 +316,21 @@ void mongo_iarchive::load(std::string& s)
 	top().Val(s);
 }
 
+inline
+void mongo_iarchive::load(bool& b)
+{
+	b = top().booleanSafe();
+}
+inline
+void mongo_iarchive::load(long& l)
+{
+	l = top().numberLong();
+}
+inline
+void mongo_iarchive::load(long long& ll)
+{
+	ll = top().numberLong();
+}
 
 inline
 void mongo_iarchive::load_binary(void* address, std::size_t count)
