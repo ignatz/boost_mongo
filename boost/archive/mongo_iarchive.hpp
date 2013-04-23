@@ -9,13 +9,15 @@
 #include <cstddef>
 #include <string>
 
-#include "boost/archive/mongo_common.h"
+#include "boost/archive/mongo_common.hpp"
+#include "boost/archive/mongo_archive_exception.hpp"
 
 #include <boost/utility/enable_if.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/mpl/assert.hpp>
 
+#include <boost/serialization/throw_exception.hpp>
 #include <boost/archive/detail/register_archive.hpp>
 #include <boost/archive/detail/common_iarchive.hpp>
 #include <boost/archive/shared_ptr_helper.hpp>
@@ -41,7 +43,14 @@ protected:
 
 	type& top()
 	{
-		assert(_stack.size()>0 && _stack.back().size()>0);
+		if (_stack.size() == 0 || _stack.back().size() == 0) {
+			// when you see this error it's most certainly, because your data
+			// structure has changed since serialization or your simply reading
+			// the wrong data.
+			using boost::serialization::throw_exception;
+			throw_exception(mongo_archive_exception(
+				mongo_archive_exception::mongo_archive_mismatch));
+		}
 		return _stack.back().front();
 	}
 
@@ -87,7 +96,16 @@ protected:
 			return;
 		}
 
-		assert(strcmp(t.name(), top().fieldName()) == 0);
+		if (strcmp(t.name(), top().fieldName()) != 0) {
+			std::cout << t.name() << " " << top().fieldName() << std::endl;
+			// This error could mean that you changed the data structure or
+			// serialization code (particularly NVPs) since serialization, or
+			// you're reading the wrong data.
+			using boost::serialization::throw_exception;
+			throw_exception(mongo_archive_exception(
+				mongo_archive_exception::mongo_archive_name_error));
+		}
+
 		bool const is_obj = top().isABSONObj();
 		if (is_obj) {
 			value_type tmp;
@@ -123,17 +141,23 @@ protected:
 	load_override(boost::serialization::array<T> const& a, int x)
 	{
 		using boost::serialization::make_nvp;
+		using boost::lexical_cast;
 
 		if (!(_flags & sparse_array)) {
 			for (size_t ii = 0; ii<a.count(); ++ii)
 			{
-				assert(boost::lexical_cast<std::string>(ii) == top().fieldName());
+				if (lexical_cast<std::string>(ii) != top().fieldName()) {
+					using boost::serialization::throw_exception;
+					throw_exception(mongo_archive_exception(
+						mongo_archive_exception::mongo_archive_sparse_array));
+				}
 				load_override(make_nvp(top().fieldName(), *(a.address()+ii)), x);
 			}
 		} else {
 			for (size_t ii = 0; ii<a.count(); ++ii)
 			{
-				if (_stack.back().size() && boost::lexical_cast<std::string>(ii) == top().fieldName()) {
+				if (_stack.back().size() > 0 &&
+						lexical_cast<std::string>(ii) == top().fieldName()) {
 					load_override(make_nvp(top().fieldName(), *(a.address()+ii)), x);
 				} else {
 					*(a.address()+ii) = T();
@@ -241,10 +265,10 @@ struct load_array_type<mongo_iarchive>
 
 		boost::serialization::collection_size_type count;
 		ar >> BOOST_SERIALIZATION_NVP(count);
-		if(size_t(count) > c) {
+		if (size_t(count) > c) {
 			using boost::serialization::throw_exception;
 			throw_exception(archive_exception(
-					archive_exception::array_size_too_short));
+				archive_exception::array_size_too_short));
 		}
 		ar >> serialization::make_array(static_cast<value_type*>(&t[0]), count);
 	}
@@ -336,7 +360,12 @@ inline
 void mongo_iarchive::load_binary(void* address, std::size_t count)
 {
 	std::string str = top().String();
-	assert(str.size() == count);
+	if (str.size() != count) {
+		using boost::serialization::throw_exception;
+		throw_exception(mongo_archive_exception(
+			mongo_archive_exception::mongo_archive_binary));
+	}
+
 	str.copy(static_cast<char*>(address), count);
 }
 

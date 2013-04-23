@@ -1,82 +1,16 @@
 #include <gtest/gtest.h>
 #include <string>
 #include <cstdlib>
-#include <stdexcept>
-#include <iostream>
 
-#include <boost/shared_ptr.hpp>
 #include <boost/serialization/map.hpp>
 #include "boost/archive/mongo_oarchive.hpp"
 #include "boost/archive/mongo_iarchive.hpp"
 
+#include "test/connect.h"
 #include "test/Simple.h"
 
 using namespace boost::archive;
 using boost::serialization::make_nvp;
-
-std::string const default_port("27017");
-std::string const default_host("localhost");
-std::string host(default_host + ":" + default_port);
-std::string const db("BoostMongoTest");
-
-void drop_database(mongo::DBClientConnection& con)
-{
-	mongo::BSONObj info;
-	con.runCommand(db, BSON("dropDatabase" << 1), info);
-}
-
-boost::shared_ptr<mongo::DBClientConnection>
-connect(
-	std::string const& host,
-	std::string const& db = std::string(),
-	std::string const& user = std::string(),
-	std::string const& pw = std::string())
-{
-	boost::shared_ptr<mongo::DBClientConnection> con(
-		new mongo::DBClientConnection);
-
-	try {
-		con->connect(host);
-
-		std::string emsg;
-		if (!user.empty() && !con->auth(db, user, pw, emsg)) {
-			throw std::runtime_error(emsg.c_str());
-		}
-	} catch (...) {
-		con.reset();
-		throw;
-	}
-	return con;
-}
-
-boost::shared_ptr<mongo::DBClientConnection>
-try_to_connect_if_necessary()
-{
-	static boost::shared_ptr<mongo::DBClientConnection> con;
-
-	if (!con) {
-		try {
-			con = connect(host, db);
-			drop_database(*con);
-		} catch(mongo::DBException const& e) {
-			// silent failure policy: run tests, including the real
-			// thing, only if DB is available.
-			std::cerr << "connection failed: "
-				<< e.what() << std::endl;
-			std::cerr << "make sure a mongodb instance is running, "
-				"to perform tests using db access" << std::endl;
-		}
-	}
-	return con;
-}
-
-#define TRY_TO_CONNECT_IF_NECESSARY() \
-	boost::shared_ptr<mongo::DBClientConnection> connection; \
-	do { \
-		connection = try_to_connect_if_necessary(); \
-		if (!connection) return; \
-	} while (false)
-
 
 TEST(Database, Base)
 {

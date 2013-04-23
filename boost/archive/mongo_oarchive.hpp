@@ -9,7 +9,7 @@
 #include <cstddef>
 #include <string>
 
-#include "boost/archive/mongo_common.h"
+#include "boost/archive/mongo_common.hpp"
 
 #include <boost/utility/enable_if.hpp>
 #include <boost/shared_ptr.hpp>
