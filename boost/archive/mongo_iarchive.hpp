@@ -56,7 +56,12 @@ protected:
 
 	void pop_element()
 	{
-		assert(_stack.size()>0 && _stack.back().size()>0);
+		if (_stack.size() == 0 || _stack.back().size() == 0) {
+			// same as above.
+			using boost::serialization::throw_exception;
+			throw_exception(mongo_archive_exception(
+				mongo_archive_exception::mongo_archive_mismatch));
+		}
 		_stack.back().pop_front();
 	}
 

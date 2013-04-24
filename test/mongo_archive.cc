@@ -219,9 +219,26 @@ TEST_F(MongoArchiveTest, Map)
 
 TEST_F(MongoArchiveTest, Abstract)
 {
-	boost::shared_ptr<Base> x(new Poly (42)), y;
+	Base *x(new Poly (42, 5)), *y;
+
 	Poly const& xp = dynamic_cast<Poly const&>(*x);
 	ASSERT_EQ(42, xp.member);
+	ASSERT_EQ(5 , x->member);
+
+	serialize(x);
+	deserialize(getObject(), y);
+
+	Poly const& yp = dynamic_cast<Poly const&>(*y);
+	ASSERT_EQ(xp, yp);
+}
+
+TEST_F(MongoArchiveTest, SharedPtr)
+{
+	boost::shared_ptr<Base> x(new Poly (42, 5)), y;
+
+	Poly const& xp = dynamic_cast<Poly const&>(*x);
+	ASSERT_EQ(42, xp.member);
+	ASSERT_EQ(5, x->member);
 
 	serialize(x);
 	deserialize(getObject(), y);

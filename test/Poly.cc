@@ -6,17 +6,22 @@
 
 BOOST_CLASS_EXPORT_IMPLEMENT(Poly)
 
-Poly::Poly(int a) : Base(), member(a) {}
+Poly::Poly(int a, int b) : Base(b), member(a) {}
+Poly::~Poly() {}
 
-bool Poly::operator== (Poly const& other) const
+bool Poly::operator== (Poly const& rhs) const
 {
-	return member == other.member;
+	Base const& base = static_cast<Base const&>(*this);
+	return base == static_cast<Base const&>(rhs) &&
+		member == rhs.member;
 }
 
 std::ostream& operator<< (std::ostream& os, Poly const& d)
 {
-	os << "Poly : { "
+	Base const& base = static_cast<Base const&>(d);
+	os << "Poly( "
+		<< base <<  ", "
 		<< "member: " << d.member << ", "
-		<< " }";
+		<< " )";
 	return os;
 }

@@ -9,11 +9,15 @@
 
 struct Poly : public Base
 {
-	Poly(int a = 0);
+	Poly(int a = 0, int b = 0);
+	virtual ~Poly();
 
+	// wickedly the name of this member and the int member in
+	// Poly's base class are the same.
 	int member;
 
-	bool operator== (Poly const& other) const;
+	bool operator== (Poly const& rhs) const;
+	virtual void fun() {}
 
 private:
 	friend class boost::serialization::access;
