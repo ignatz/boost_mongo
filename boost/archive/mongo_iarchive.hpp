@@ -103,9 +103,10 @@ protected:
 
 		if (strcmp(t.name(), top().fieldName()) != 0) {
 			std::cout << t.name() << " " << top().fieldName() << std::endl;
-			// This error could mean that you changed the data structure or
-			// serialization code (particularly NVPs) since serialization, or
-			// you're reading the wrong data.
+			// The name of the NVP does't match the current BSONElement. This
+			// could mean that you changed the data structure or serialization
+			// code (particularly NVPs) since serialization, or you're simply
+			// reading the wrong data.
 			using boost::serialization::throw_exception;
 			throw_exception(mongo_archive_exception(
 				mongo_archive_exception::mongo_archive_name_error));

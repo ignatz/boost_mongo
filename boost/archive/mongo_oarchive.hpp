@@ -38,16 +38,22 @@ protected:
 	char const* _name; // stores current name of nvp for builtins
 	unsigned int const _flags;
 
-	std::pair<value_type, bool>& top()
+	bool& top_inserted()
 	{
 		assert(_stack.size()>0);
-		return _stack.back();
+		return _stack.back().second;
 	}
 
-	std::pair<value_type, bool>& previous()
+	type& top_builder()
+	{
+		assert(_stack.size()>0);
+		return *(_stack.back().first);
+	}
+
+	type& prev_builder()
 	{
 		assert(_stack.size()>1);
-		return *(_stack.end()-2);
+		return *((_stack.end()-2)->first);
 	}
 
 	// Anything not an attribute and not a name-value pair is an
@@ -93,11 +99,12 @@ protected:
 
 		detail::common_oarchive<mongo_oarchive>::save_override(t.const_value(), x);
 
-		// builtin data types append themselves as "name : value" pair, however
-		// custom data types need to be inserted as "name : { value }" pair.
-		bool const inserted = top().second;
-		if (!inserted)
-			previous().first->append(t.name(), top().first->obj());
+		// In case the element on top of the stack is a builtin type it has
+		// been inserted already in this frame to be represented as "name : value"
+		// pair. However, if the top element is a custom type the it still needs
+		// to be inserted as "name : { value }" pair.
+		if (!top_inserted())
+			prev_builder().append(t.name(), top_builder().obj());
 
 		_stack.pop_back();
 	}
@@ -226,7 +233,7 @@ inline
 void mongo_oarchive::save_override(
 	class_name_type const& t, int)
 {
-	top().first->append(fusion::at_key<class_name_type>(meta_type_names), t);
+	top_builder().append(fusion::at_key<class_name_type>(meta_type_names), t);
 }
 
 template<typename T>
@@ -235,8 +242,8 @@ typename boost::enable_if_c<
 	>::type
 mongo_oarchive::save(T const& t)
 {
-	previous().first->append(_name, t);
-	top().second = true;
+	prev_builder().append(_name, t);
+	top_inserted() = true;
 }
 
 template<typename T>
@@ -246,9 +253,9 @@ typename boost::enable_if_c<
 mongo_oarchive::save(T const& t)
 {
 	using namespace boost::fusion::result_of;
-	previous().first->append(_name,
+	prev_builder().append(_name,
 		typename value_at_key<bson_type_mapping, T>::type(t));
-	top().second = true;
+	top_inserted() = true;
 }
 
 inline
@@ -274,8 +281,8 @@ inline
 void mongo_oarchive::save_binary(
 	void const* address, std::size_t count)
 {
-	previous().first->append(_name, static_cast<char const*>(address), count);
-	top().second = true;
+	prev_builder().append(_name, static_cast<char const*>(address), count);
+	top_inserted() = true;
 }
 
 } // namespace archive
