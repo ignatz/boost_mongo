@@ -324,7 +324,14 @@ inline
 void mongo_iarchive::load(class_name_type& t)
 {
 	std::string const& str = top().String();
-	str.copy(static_cast<char*>(t), std::string::npos);
+	if(str.size() > BOOST_SERIALIZATION_MAX_KEY_SIZE - 1) {
+		using boost::serialization::throw_exception;
+		throw_exception(archive_exception(
+				archive_exception::invalid_class_name));
+	}
+	char* tptr = t;
+	str.copy(t, std::string::npos);
+	tptr[str.size()] = '\0';
 }
 
 inline
