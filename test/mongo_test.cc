@@ -1,7 +1,7 @@
+#include <gtest/gtest.h>
 #include <iostream>
 #include <sstream>
 #include <vector>
-#include <gtest/gtest.h>
 
 #include <boost/foreach.hpp>
 #include <boost/serialization/string.hpp>
@@ -9,13 +9,10 @@
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/shared_ptr.hpp>
-#include <boost/archive/xml_oarchive.hpp>
 #include <boost/type_traits/is_same.hpp>
 #include <boost/numeric/conversion/bounds.hpp>
 
-#include "boost/archive/mongo_oarchive.hpp"
-#include "boost/archive/mongo_iarchive.hpp"
-
+#include "test/MongoArchive.h"
 #include "test/builtins.h"
 #include "test/Plain.h"
 #include "test/Simple.h"
@@ -24,50 +21,10 @@
 using namespace boost::archive;
 using boost::serialization::make_nvp;
 
-struct ExternEqual {};
-bool operator== (ExternEqual const&, ExternEqual const&) { return false; }
-
-
-class MongoArchiveTest :
-	public ::testing::Test
-{
-protected:
-	MongoArchiveTest() :
-		mBuilder(),
-		out(mBuilder)
-	{}
-
-	mongo::BSONObj getObject()
-	{
-		return mBuilder.obj();
-	}
-
-	template<typename T>
-	void serialize(T const& val)
-	{
-		out << make_nvp(name, val);
-	}
-
-	template<typename U>
-	void deserialize(mongo::BSONObj const& obj, U& b) const
-	{
-		mongo_iarchive in(obj);
-		in >> make_nvp(name, b);
-	}
-
-	static const char name[];
-
-private:
-	mongo::BSONObjBuilder mBuilder;
-	mongo_oarchive out;
-};
-
-const char MongoArchiveTest::name [] = { "fancyName" };
-
 
 template<typename T>
 struct MongoBuiltin :
-	public MongoArchiveTest
+	public MongoArchive
 {
 	typedef T type;
 };
@@ -107,7 +64,7 @@ TYPED_TEST(MongoBuiltin, BuiltinTypes)
 }
 
 
-TEST_F(MongoArchiveTest, SimpleType)
+TEST_F(MongoArchive, SimpleType)
 {
 	Simple a, b;
 	a.n = static_cast<Simple::Name>(42);
@@ -115,45 +72,15 @@ TEST_F(MongoArchiveTest, SimpleType)
 	serialize(a);
 
 	mongo::BSONObj obj = getObject();
-	int e = obj.getField(name).embeddedObject().getField("enum").Int();
-	ASSERT_EQ(a.str,  obj.getField(name).embeddedObject().getField("str").String());
+	int e = obj.getField(getName()).embeddedObject().getField("enum").Int();
+	ASSERT_EQ(a.str,  obj.getField(getName()).embeddedObject().getField("str").String());
 	ASSERT_EQ((int)a.n, e);
 
 	deserialize(obj, b);
 	ASSERT_EQ(a, b);
 }
 
-TEST_F(MongoArchiveTest, AllMembersRegressionTest)
-{
-	boost::array<int, 42> a, b;
-	serialize(a);
-
-	mongo::BSONObj obj = getObject();
-	mongo::BSONElement elem = obj.getField(name).embeddedObject().getField("elems");
-	ASSERT_EQ(static_cast<int>(a.size()+1), elem.embeddedObject().nFields());
-
-	deserialize(obj, b);
-	ASSERT_TRUE(std::equal(a.begin(), a.end(), b.begin()));
-}
-
-#include <boost/archive/xml_oarchive.hpp>
-TEST_F(MongoArchiveTest, NotCompressableRegressionTest)
-{
-	ASSERT_TRUE (boost::has_equal_to<Simple>::value);
-	ASSERT_TRUE (boost::has_equal_to<ExternEqual>::value);
-	ASSERT_FALSE(boost::has_equal_to<Plain>::value);
-	ASSERT_FALSE(boost::archive::detail::is_compressable<Plain>::value);
-
-	std::vector<Plain> a(42);
-	std::vector<Plain> b;
-
-	serialize(a);
-	deserialize(getObject(), b);
-
-	ASSERT_EQ(a.size(), b.size());
-}
-
-TEST_F(MongoArchiveTest, Array)
+TEST_F(MongoArchive, Array)
 {
 	boost::array<int, 1024> a, b;
 
@@ -169,7 +96,7 @@ TEST_F(MongoArchiveTest, Array)
 	ASSERT_EQ(a, b);
 }
 
-TEST_F(MongoArchiveTest, SparseArray)
+TEST_F(MongoArchive, SparseArray)
 {
 	boost::array<int, 1024> x, y;
 
@@ -188,19 +115,19 @@ TEST_F(MongoArchiveTest, SparseArray)
 
 	mongo::BSONObjBuilder builder;
 	mongo_oarchive oa(builder, mongo_oarchive::sparse_array);
-	oa << make_nvp(name, x);
+	oa << make_nvp(getName(), x);
 
 	mongo::BSONObj obj = builder.obj();
 
-	mongo::BSONElement elem = obj.getField(name).embeddedObject().getField("elems");
+	mongo::BSONElement elem = obj.getField(getName()).embeddedObject().getField("elems");
 	ASSERT_EQ(range+1, elem.embeddedObject().nFields());
 
 	mongo_iarchive in(obj, mongo_iarchive::sparse_array);
-	in >> make_nvp(name, y);
+	in >> make_nvp(getName(), y);
 	ASSERT_EQ(x, y);
 }
 
-TEST_F(MongoArchiveTest, Map)
+TEST_F(MongoArchive, Map)
 {
 	std::map<std::string, Simple> x, y;
 	x["one"].a = 42;
@@ -217,7 +144,7 @@ TEST_F(MongoArchiveTest, Map)
 	ASSERT_EQ(x, y);
 }
 
-TEST_F(MongoArchiveTest, Abstract)
+TEST_F(MongoArchive, Abstract)
 {
 	Base *x(new Poly (42, 5)), *y;
 
@@ -232,7 +159,7 @@ TEST_F(MongoArchiveTest, Abstract)
 	ASSERT_EQ(xp, yp);
 }
 
-TEST_F(MongoArchiveTest, SharedPtr)
+TEST_F(MongoArchive, SharedPtr)
 {
 	boost::shared_ptr<Base> x(new Poly (42, 5)), y;
 
