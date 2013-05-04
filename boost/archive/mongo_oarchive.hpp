@@ -50,10 +50,17 @@ protected:
 		return *(_stack.back().first);
 	}
 
-	type& prev_builder()
+	type& previous_builder()
 	{
 		assert(_stack.size()>1);
 		return *((_stack.end()-2)->first);
+	}
+
+	template<typename T>
+	void append_to_previous_builder(T const& t)
+	{
+		previous_builder().append(_name, t);
+		top_inserted() = true;
 	}
 
 	// Anything not an attribute and not a name-value pair is an
@@ -103,8 +110,9 @@ protected:
 		// been inserted already in this frame to be represented as "name : value"
 		// pair. However, if the top element is a custom type the it still needs
 		// to be inserted as "name : { value }" pair.
-		if (!top_inserted())
-			prev_builder().append(t.name(), top_builder().obj());
+		if (!top_inserted()) {
+			previous_builder().append(t.name(), top_builder().obj());
+		}
 
 		_stack.pop_back();
 	}
@@ -161,6 +169,7 @@ protected:
 
 	// required for strings
 	void save(std::string const& s);
+	void save(std::wstring const& ws);
 
 	// required for pointer types
 	template<typename T>
@@ -242,8 +251,7 @@ typename boost::enable_if_c<
 	>::type
 mongo_oarchive::save(T const& t)
 {
-	prev_builder().append(_name, t);
-	top_inserted() = true;
+	append_to_previous_builder(t);
 }
 
 template<typename T>
@@ -253,9 +261,8 @@ typename boost::enable_if_c<
 mongo_oarchive::save(T const& t)
 {
 	using namespace boost::fusion::result_of;
-	prev_builder().append(_name,
+	append_to_previous_builder(
 		typename value_at_key<bson_type_mapping, T>::type(t));
-	top_inserted() = true;
 }
 
 inline
@@ -273,15 +280,36 @@ void mongo_oarchive::save(boost::serialization::item_version_type const& t)
 inline
 void mongo_oarchive::save(std::string const& s)
 {
-	save_binary(s.c_str(), s.size()+1);
+	append_to_previous_builder(s);
 }
 
+inline
+void mongo_oarchive::save(std::wstring const& ws)
+{
+	// convert wstring to multi-byte string first, which can then
+	// be stored in mongo db.
+	std::string s;
+	std::mbstate_t state;
+	std::wstring::const_iterator oit;
+	for (oit = ws.begin(); oit < ws.end(); ++oit) {
+		std::string mb(MB_CUR_MAX, '\0');
+		std::wcrtomb(&mb[0], *oit, &state);
+
+		// append only non-0 characters to string
+		std::string::const_iterator it = mb.begin();
+		while (*it != '\0' && it != mb.end())
+			s += *it++;
+	}
+	save(s);
+}
 
 inline
 void mongo_oarchive::save_binary(
 	void const* address, std::size_t count)
 {
-	prev_builder().append(_name, static_cast<char const*>(address), count);
+	previous_builder().appendBinData(
+		_name, count,
+		mongo::BinDataGeneral, address);
 	top_inserted() = true;
 }
 

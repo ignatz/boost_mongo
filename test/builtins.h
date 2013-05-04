@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gtest/gtest.h>
+#include <string>
 
 typedef ::testing::Types<
 		bool,
@@ -24,3 +25,13 @@ typedef ::testing::Types<
 		long double,
 		double
 	> builtin_types;
+
+
+typedef ::testing::Types<
+#if __cplusplus >= 201103L
+		//std::u16string,
+		//std::u32string,
+#endif
+		std::string,
+		std::wstring
+	> string_types;

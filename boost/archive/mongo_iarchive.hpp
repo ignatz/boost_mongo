@@ -21,6 +21,7 @@
 #include <boost/archive/detail/register_archive.hpp>
 #include <boost/archive/detail/common_iarchive.hpp>
 #include <boost/archive/shared_ptr_helper.hpp>
+#include <boost/archive/iterators/dataflow_exception.hpp>
 
 #include <boost/archive/detail/abi_prefix.hpp> // must be the last header
 
@@ -102,7 +103,6 @@ protected:
 		}
 
 		if (strcmp(t.name(), top().fieldName()) != 0) {
-			std::cout << t.name() << " " << top().fieldName() << std::endl;
 			// The name of the NVP does't match the current BSONElement. This
 			// could mean that you changed the data structure or serialization
 			// code (particularly NVPs) since serialization, or you're simply
@@ -208,6 +208,7 @@ protected:
 
 	// required for strings
 	void load(std::string& s);
+	void load(std::wstring& ws);
 
 	// required for JSON deserialization
 	void load(bool& b);
@@ -299,10 +300,11 @@ typename boost::enable_if_c<
 	>::type
 mongo_iarchive::load(T& t)
 {
-	if (_flags & is_json)
+	if (_flags & is_json) {
 		t = top().number();
-	else
+	} else {
 		top().Val(t);
+	}
 }
 
 template<typename T>
@@ -311,9 +313,9 @@ typename boost::enable_if_c<
 	>::type
 mongo_iarchive::load(T& t)
 {
-	if (_flags & is_json)
+	if (_flags & is_json) {
 		t = top().number();
-	else {
+	} else {
 		using namespace boost::fusion::result_of;
 		typename value_at_key<bson_type_mapping, T>::type tmp;
 		top().Val(tmp);
@@ -325,7 +327,7 @@ inline
 void mongo_iarchive::load(class_name_type& t)
 {
 	std::string const& str = top().String();
-	if(str.size() > BOOST_SERIALIZATION_MAX_KEY_SIZE - 1) {
+	if (str.size() > BOOST_SERIALIZATION_MAX_KEY_SIZE - 1) {
 		using boost::serialization::throw_exception;
 		throw_exception(archive_exception(
 				archive_exception::invalid_class_name));
@@ -352,6 +354,26 @@ void mongo_iarchive::load(std::string& s)
 {
 	top().Val(s);
 }
+inline
+void mongo_iarchive::load(std::wstring& ws)
+{
+	std::string str = top().String();
+	char const* start = str.data();
+	char const* const end = start + str.size();
+
+	int ret;
+	std::mbstate_t state;
+	wchar_t wc;
+	while ((ret = std::mbrtowc(&wc, start, end-start, &state)) > 0) {
+		ws += wc;
+		start+=ret;
+	}
+	if (ret<0) {
+		boost::serialization::throw_exception(
+			iterators::dataflow_exception(
+				iterators::dataflow_exception::invalid_conversion));
+	}
+}
 
 inline
 void mongo_iarchive::load(bool& b)
@@ -372,14 +394,14 @@ void mongo_iarchive::load(long long& ll)
 inline
 void mongo_iarchive::load_binary(void* address, std::size_t count)
 {
-	std::string str = top().String();
-	if (str.size() != count) {
+	int len;
+	const char* data = top().binData(len);
+	if (size_t(len) != count) {
 		using boost::serialization::throw_exception;
 		throw_exception(mongo_archive_exception(
 			mongo_archive_exception::mongo_archive_binary));
 	}
-
-	str.copy(static_cast<char*>(address), count);
+	std::copy(data, data+len, static_cast<char*>(address));
 }
 
 } // archive
