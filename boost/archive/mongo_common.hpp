@@ -3,11 +3,9 @@
 // Copyright 2013, Sebastian Jeltsch (sjeltsch@kip.uni-heidelberg.de)
 // Distributed under the terms of the LGPLv3 or newer.
 
-#include <boost/type_traits.hpp>
-
-// we push the assert macro on the compiler stack and restore it afer we
-// included the mongo header, because older version redefine the standard
-// macro.
+// push the assert macro on the compiler stack and restore it afer we
+// included the mongo header. Older versions of mongo redefined the
+// standard macro.
 #pragma push_macro("assert")
 #include <mongo/client/dbclient.h>
 #pragma pop_macro("assert")
@@ -16,16 +14,29 @@
 #define FUSION_MAX_VECTOR_SIZE 20
 #define FUSION_MAX_MAP_SIZE 20
 
+#include <vector>
+#include <cstddef>
+#include <string>
+#include <sstream>
+
+#include <boost/type_traits.hpp>
+
+#include <boost/shared_ptr.hpp>
+#include <boost/lexical_cast.hpp>
+
+#include <boost/mpl/assert.hpp>
+
+#include <boost/utility/enable_if.hpp>
+
 #include <boost/fusion/container/map.hpp>
 #include <boost/fusion/include/has_key.hpp>
 #include <boost/fusion/include/at_key.hpp>
 #include <boost/fusion/include/value_at_key.hpp>
-#include <boost/utility/enable_if.hpp>
 
 #include <boost/archive/basic_archive.hpp>
+#include <boost/archive/detail/register_archive.hpp>
 #include <boost/serialization/item_version_type.hpp>
 #include <boost/serialization/collection_size_type.hpp>
-#include <boost/type_traits/has_equal_to.hpp>
 
 namespace boost {
 namespace archive {
@@ -37,7 +48,9 @@ class cond_deleter
 private:
 	bool cond;
 public:
-	cond_deleter(bool del = true) : cond(del) {}
+	cond_deleter(bool del = true) :
+		cond(del)
+	{}
 
 	void operator() (T* b)
 	{
@@ -49,11 +62,15 @@ public:
 
 
 template<typename T>
-struct is_compressable
+struct is_compressible
 {
 	static const bool value =
-		boost::has_trivial_default_constructor<T>::value &&
-		(boost::has_equal_to<T>::value || boost::is_arithmetic<T>::value);
+		boost::has_trivial_default_constructor<T>::value
+		&& (
+			boost::has_equal_to<T>::value
+			|| boost::is_arithmetic<T>::value
+		   )
+		&& !boost::is_array<T>::value;
 };
 
 } // detail
@@ -77,16 +94,19 @@ typedef fusion::map<
 		fusion::pair<long double, double> // problematic
 	> bson_type_mapping;
 
-
 typedef fusion::map<
 		fusion::pair<archive::class_id_type, int_least16_t>,
-		fusion::pair<archive::class_id_optional_type, int_least16_t>, // strong typedef to class_id_type
-		fusion::pair<archive::class_id_reference_type, int_least16_t>, // strong typedef to class_id_type
+		// class_id_optional_type is strong typedef to class_id_type
+		fusion::pair<archive::class_id_optional_type, int_least16_t>,
+		// class_id_reference_type is strong typedef to class_id_type
+		fusion::pair<archive::class_id_reference_type, int_least16_t>,
 		fusion::pair<archive::object_id_type, uint_least32_t>,
-		fusion::pair<archive::object_reference_type, uint_least32_t>, // strong typedef to object_id_type
+		// object_reference_type is strong typedef to object_id_type
+		fusion::pair<archive::object_reference_type, uint_least32_t>,
 		fusion::pair<archive::version_type, uint_least32_t>,
 		fusion::pair<archive::tracking_type, bool>,
-		fusion::pair<archive::class_name_type, archive::class_name_type> // uses overloaded load function
+		// utilize templated `load` overload (has_key<class_name_type> = true)
+		fusion::pair<archive::class_name_type, archive::class_name_type>
 	> meta_type_mapping;
 
 typedef fusion::map<

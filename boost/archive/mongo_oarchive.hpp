@@ -3,20 +3,10 @@
 // Copyright 2013, Sebastian Jeltsch (sjeltsch@kip.uni-heidelberg.de)
 // Distributed under the terms of the LGPLv3 or newer.
 
-#include <vector>
 #include <utility>
-#include <cstddef>
-#include <string>
 
-#include "boost/archive/mongo_common.hpp"
-
-#include <boost/utility/enable_if.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/mpl/assert.hpp>
-
-#include <boost/archive/detail/register_archive.hpp>
 #include <boost/archive/detail/common_oarchive.hpp>
+#include "boost/archive/mongo_common.hpp"
 
 #include <boost/archive/detail/abi_prefix.hpp> // must be the last header
 
@@ -26,6 +16,26 @@ namespace archive {
 class mongo_oarchive :
 	public detail::common_oarchive<mongo_oarchive>
 {
+public:
+	enum flags {
+		sparse_array = 1,
+		flags_last = 1
+	};
+
+	mongo_oarchive(mongo::BSONObjBuilder& obj,
+				   unsigned int const flags = 0);
+
+	void save_binary(void const* address, std::size_t count);
+
+	struct use_array_optimization
+	{
+		template<typename T>
+		struct apply
+		{
+			typedef boost::mpl::true_ type;
+		};
+	};
+
 protected:
 	friend class detail::interface_oarchive<mongo_oarchive>;
 	friend class save_access;
@@ -37,30 +47,12 @@ protected:
 	char const* _name; // stores current name of nvp for builtins
 	unsigned int const _flags;
 
-	bool& top_inserted()
-	{
-		assert(_stack.size()>0);
-		return _stack.back().second;
-	}
-
-	type& top_builder()
-	{
-		assert(_stack.size()>0);
-		return *(_stack.back().first);
-	}
-
-	type& previous_builder()
-	{
-		assert(_stack.size()>1);
-		return *((_stack.end()-2)->first);
-	}
+	bool& top_inserted();
+	type& top_builder();
+	type& previous_builder();
 
 	template<typename T>
-	void append_to_previous_builder(T const& t)
-	{
-		previous_builder().append(_name, t);
-		top_inserted() = true;
-	}
+	void append_to_previous_builder(T const& t);
 
 	// Anything not an attribute and not a name-value pair is an
 	// error and should be trapped here.
@@ -68,139 +60,79 @@ protected:
 	typename boost::enable_if_c<
 			!fusion::result_of::has_key<meta_type_mapping, T>::type::value
 		>::type
-	save_override(T& t, int x)
-	{
-		// If your program fails to compile here, its most likely due to
-		// not specifying an nvp wrapper around the variable to
-		// be serialized.
-		BOOST_MPL_ASSERT((serialization::is_wrapper<T>));
-		detail::common_oarchive<mongo_oarchive>::save_override(t, x);
-	}
+	save_override(T& t, int const);
 
+	// overload for special boost serialization types
 	template<typename T>
 	typename boost::enable_if_c<
 			fusion::result_of::has_key<meta_type_mapping, T>::type::value
 		>::type
-	save_override(T const& t, int x)
-	{
-		using namespace boost::fusion::result_of;
-		typename value_at_key<meta_type_mapping, T>::type const& tmp =
-			typename value_at_key<meta_type_mapping, T>::type(t);
-		save_override(boost::serialization::make_nvp(
-				fusion::at_key<T>(meta_type_names), tmp), x);
-	}
+	save_override(T const& t, int const);
 
-	// special treatment for name-value pairs.
+	// main overload for name-value pairs. Internally, serialization
+	// is dispatched to the `common_oarchive` base, which in turn dispatches
+	// the task to the `save` overloads, defined further below.
 	template<typename T>
-	void save_override(boost::serialization::nvp<T> const& t, int x)
-	{
-		// we have an enum type if name is NULL ... seriously!1!!
-		if (t.name() == NULL) {
-			save_enum_or_pointer(t.const_value(), x);
-			return;
-		}
-
-		_name = t.name();
-		_stack.push_back(std::make_pair(value_type(new type), false));
-
-		detail::common_oarchive<mongo_oarchive>::save_override(t.const_value(), x);
-
-		// In case the element on top of the stack is a builtin type it has
-		// been inserted already in this frame to be represented as "name : value"
-		// pair. However, if the top element is a custom type the it still needs
-		// to be inserted as "name : { value }" pair.
-		if (!top_inserted()) {
-			previous_builder().append(t.name(), top_builder().obj());
-		}
-
-		_stack.pop_back();
-	}
+	void save_override(boost::serialization::nvp<T> const& t, int const);
 
 	// specific overrides for attributes - not name value pairs so we
 	// want to trap them before the above "fall through"
-	void save_override(class_name_type const& a, int);
+	void save_override(class_name_type const& a, int const);
 
+	// overload for non-compressible array types
 	template<typename T>
-	typename boost::enable_if_c<!detail::is_compressable<T>::value>::type
-	save_override(boost::serialization::array<T> const& a, int x)
-	{
-		using boost::serialization::make_nvp;
-		for (size_t ii = 0; ii<a.count(); ++ii)
-		{
-			std::string s = boost::lexical_cast<std::string>(ii);
-			save_override(make_nvp(s.c_str(), *(a.address()+ii)), x);
-		}
-	}
+	typename boost::enable_if_c<!detail::is_compressible<T>::value>::type
+	save_override(boost::serialization::array<T> const& a, int const);
 
+	// overload for compressible array types
 	template<typename T>
-	typename boost::enable_if_c<detail::is_compressable<T>::value>::type
-	save_override(boost::serialization::array<T> const& a, int x)
-	{
-		typedef typename boost::decay<T>::type base_type;
-		using boost::serialization::make_nvp;
-		for (size_t ii = 0; ii<a.count(); ++ii)
-		{
-			if (_flags & sparse_array && *(a.address()+ii) == base_type())
-				continue;
+	typename boost::enable_if_c<detail::is_compressible<T>::value>::type
+	save_override(boost::serialization::array<T> const& a, int const);
 
-			std::string s = boost::lexical_cast<std::string>(ii);
-			save_override(make_nvp(s.c_str(), *(a.address()+ii)), x);
-		}
-	}
+	// overload for pointer types
+	template<typename T>
+	void save_enum_or_pointer(T const& t, int const);
+
+	// overload for enum types
+	void save_enum_or_pointer(int const& e, int const);
 
 
-	// detail_common_oarchive::save_override calls save functions
+	// detail_common_oarchive::save_override calls one of the
+	// following `save` overloads.
+
+	// overload for arithmetic types natively supported by mongodb.
 	template<typename T>
 	typename boost::enable_if_c<
-			!fusion::result_of::has_key<bson_type_mapping, T>::type::value
+			!fusion::result_of::has_key<bson_type_mapping, T>::type::value &&
+			boost::is_arithmetic<T>::value
 		>::type
 	save(T const& t);
 
+	// this overload fits whenever a class is declared to have
+	// `primitive_type`-serialization, therefore use object's
+	// stream operators.
+	template<typename T>
+	typename boost::enable_if_c<
+			!fusion::result_of::has_key<bson_type_mapping, T>::type::value &&
+			!boost::is_arithmetic<T>::value
+		>::type
+	save(T const& t);
+
+	// overload for arithmetic types which require type remapping to be
+	// stored in mongodb.
 	template<typename T>
 	typename boost::enable_if_c<
 			fusion::result_of::has_key<bson_type_mapping, T>::type::value
 		>::type
 	save(T const& t);
 
-	// required overload for boost serialization
+	// required overloads for boost serialization
 	void save(boost::serialization::collection_size_type const& t);
 	void save(boost::serialization::item_version_type const& t);
 
-	// required for strings
+	// required for byte and wide character string serialization
 	void save(std::string const& s);
 	void save(std::wstring const& ws);
-
-	// required for pointer types
-	template<typename T>
-	void save_enum_or_pointer(T const& t, int x)
-	{
-		detail::common_oarchive<mongo_oarchive>::save_override(t, x);
-	}
-
-	// required for enum types
-	void save_enum_or_pointer(int const& e, int) { save(e);}
-
-public:
-	enum flags {
-		sparse_array = 1,
-		flags_last = 1
-	};
-
-	struct use_array_optimization
-	{
-		template<typename T>
-		struct apply
-		{
-			typedef boost::mpl::true_ type;
-		};
-	};
-
-	mongo_oarchive(type& obj, unsigned int const flags = 0) :
-		_stack(1, std::make_pair(value_type(&obj, detail::cond_deleter<type>(false)), false)),
-		_name(NULL), _flags(flags)
-	{}
-
-	void save_binary(void const* address, std::size_t count);
 };
 
 
@@ -210,17 +142,7 @@ template<>
 struct save_array_type<mongo_oarchive>
 {
 	template<typename T>
-	static void invoke(mongo_oarchive& ar, T const& t)
-	{
-		typedef typename boost::remove_extent<T>::type value_type;
-
-		// consider alignment
-		size_t const c = sizeof(t) / sizeof(value_type);
-
-		boost::serialization::collection_size_type count(c);
-		ar << BOOST_SERIALIZATION_NVP(count);
-		ar << serialization::make_array(static_cast<value_type const*>(&t[0]), count);
-	}
+	static void invoke(mongo_oarchive& ar, T const& t);
 };
 
 } // detail
@@ -233,84 +155,4 @@ BOOST_SERIALIZATION_USE_ARRAY_OPTIMIZATION(boost::archive::mongo_oarchive)
 
 #include <boost/archive/detail/abi_suffix.hpp> // pops abi_suffix.hpp pragmas
 
-
-namespace boost {
-namespace archive {
-
-inline
-void mongo_oarchive::save_override(
-	class_name_type const& t, int)
-{
-	top_builder().append(fusion::at_key<class_name_type>(meta_type_names), t);
-}
-
-template<typename T>
-typename boost::enable_if_c<
-		!fusion::result_of::has_key<bson_type_mapping, T>::type::value
-	>::type
-mongo_oarchive::save(T const& t)
-{
-	append_to_previous_builder(t);
-}
-
-template<typename T>
-typename boost::enable_if_c<
-		fusion::result_of::has_key<bson_type_mapping, T>::type::value
-	>::type
-mongo_oarchive::save(T const& t)
-{
-	using namespace boost::fusion::result_of;
-	append_to_previous_builder(
-		typename value_at_key<bson_type_mapping, T>::type(t));
-}
-
-inline
-void mongo_oarchive::save(boost::serialization::collection_size_type const& t)
-{
-	save(size_t(t));
-}
-
-inline
-void mongo_oarchive::save(boost::serialization::item_version_type const& t)
-{
-	save(unsigned(t));
-}
-
-inline
-void mongo_oarchive::save(std::string const& s)
-{
-	append_to_previous_builder(s);
-}
-
-inline
-void mongo_oarchive::save(std::wstring const& ws)
-{
-	// convert wstring to multi-byte string first, which can then
-	// be stored in mongo db.
-	std::string s;
-	std::mbstate_t state;
-	std::wstring::const_iterator oit;
-	for (oit = ws.begin(); oit < ws.end(); ++oit) {
-		std::string mb(MB_CUR_MAX, '\0');
-		std::wcrtomb(&mb[0], *oit, &state);
-
-		// append only non-0 characters to string
-		std::string::const_iterator it = mb.begin();
-		while (*it != '\0' && it != mb.end())
-			s += *it++;
-	}
-	save(s);
-}
-
-inline
-void mongo_oarchive::save_binary(
-	void const* address, std::size_t count)
-{
-	previous_builder().appendBinData(
-		_name, count,
-		mongo::BinDataGeneral, address);
-	top_inserted() = true;
-}
-
-} // namespace archive
-} // namespace boost
+#include "boost/archive/mongo_oarchive.ipp"

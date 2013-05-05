@@ -15,12 +15,12 @@ bool operator== (ExternEqual const&, ExternEqual const&)
 	return false;
 }
 
-TEST_F(MongoArchive, NotCompressableRegression)
+TEST_F(MongoArchive, NotCompressibleRegression)
 {
 	ASSERT_TRUE (boost::has_equal_to<Simple>::value);
 	ASSERT_TRUE (boost::has_equal_to<ExternEqual>::value);
 	ASSERT_FALSE(boost::has_equal_to<Plain>::value);
-	ASSERT_FALSE(boost::archive::detail::is_compressable<Plain>::value);
+	ASSERT_FALSE(boost::archive::detail::is_compressible<Plain>::value);
 
 	std::vector<Plain> a(42);
 	std::vector<Plain> b;

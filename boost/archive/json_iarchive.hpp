@@ -13,29 +13,53 @@ namespace archive {
 class json_iarchive :
 	public mongo_iarchive
 {
-private:
-	typedef std::istreambuf_iterator<char> iterator;
-	mongo::BSONObj* _obj;
-
-	mongo::BSONObj const& init(std::istream& is)
-	{
-		_obj = new mongo::BSONObj();
-		*_obj = mongo::fromjson(std::string(iterator(is), iterator()));
-		return *_obj;
-	}
-
 public:
-	json_iarchive(std::istream& is, unsigned int const flags = 0) :
-		mongo_iarchive(init(is), flags | is_json)
-	{}
+	json_iarchive(
+		std::istream& is,
+		unsigned int const flags = 0);
 
-	~json_iarchive()
-	{
-		delete _obj;
-	}
+	~json_iarchive();
+
+private:
+	mongo::BSONObj const& init(std::istream& is);
+
+	mongo::BSONObj* _obj;
 };
 
 } // archive
 } // boost
 
 BOOST_SERIALIZATION_REGISTER_ARCHIVE(boost::archive::json_iarchive)
+
+
+namespace boost {
+namespace archive {
+
+inline
+mongo::BSONObj const&
+json_iarchive::init(std::istream& is)
+{
+	typedef std::istreambuf_iterator<char> it;
+
+	_obj = new mongo::BSONObj();
+	*_obj = mongo::fromjson(std::string(it(is), it()));
+
+	return *_obj;
+}
+
+inline
+json_iarchive::json_iarchive(
+	std::istream& is,
+	unsigned int const flags) :
+		// make sure, is_json flag is set
+		mongo_iarchive(init(is), flags | is_json)
+{}
+
+inline
+json_iarchive::~json_iarchive()
+{
+	delete _obj;
+}
+
+} // archive
+} // boost
