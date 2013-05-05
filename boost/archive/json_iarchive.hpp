@@ -1,8 +1,7 @@
 #pragma once
 
-// Copyright (c) 2013, Sebastian Jeltsch (sjeltsch@kip.uni-heidelberg.de)
-// Distributed under the Boost Software License, Version 1.0.
-// (See http://www.boost.org/LICENSE_1_0.txt)
+// Copyright 2013, Sebastian Jeltsch (sjeltsch@kip.uni-heidelberg.de)
+// Distributed under the terms of the LGPLv3 or newer.
 
 #include <istream>
 
