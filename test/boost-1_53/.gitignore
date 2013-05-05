@@ -1,0 +1,10 @@
+# exclude everything
+*
+
+# except
+!.gitignore
+!*.cpp
+!*.hpp
+!*.py
+!wscript
+!README*

@@ -1,0 +1,131 @@
+#!/usr/bin/env python
+
+# Copyright 2013, Sebastian Jeltsch (sjeltsch@kip.uni-heidelberg.de)
+# Use, modification and distribution is subject to the Boost Software
+# License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import sys, os
+
+components = ['../..']
+recurse    = lambda ctx : map(lambda proj: ctx.recurse(proj), components)
+
+def options(opt):
+    recurse(opt)
+    opt.load('g++')
+    opt.load('boost')
+
+def configure(cfg):
+    recurse(cfg)
+    cfg.load('g++')
+    cfg.load('boost')
+
+    cfg.check_boost(
+            lib='serialization system thread filesystem',
+            uselib_store='BOOST4VENDOR')
+
+    cfg.check_cxx(lib='mongoclient', uselib_store='MONGO')
+    cfg.check_cxx(lib='pthread')
+    cfg.check_cxx(lib='dl')
+
+def build(bld):
+    recurse(bld)
+
+    cxxflags = [ '-g', '-O0', ]
+
+    libs = {
+        'boost_test_common': [
+            'A.cpp',
+            'polymorphic_base.cpp',
+            'polymorphic_derived2.cpp',
+            'polymorphic_derived1.cpp',
+            ],
+        'plugin_polymorphic_derived2' :
+            [ x.relpath() for x in \
+                bld.path.ant_glob('dll_*.cpp') ],
+        }
+
+    for lib, sources in libs.iteritems():
+        bld(target = lib,
+            features = 'cxx cxxshlib',
+            source  = sources,
+            use = [ 'BOOST4VENDOR', 'DL', 'boost_mongo_inc' ],
+            cxxflags = cxxflags,
+            includes = '.',
+            install_path = 'lib')
+
+    tests = [
+            'test_array.cpp',
+            'test_binary.cpp',
+            'test_bitset.cpp',
+            'test_class_info_save.cpp',
+            'test_complex.cpp',
+            'test_contained_class.cpp',
+            'test_delete_pointer.cpp',
+            'test_deque.cpp',
+            'test_derived.cpp',
+            'test_derived_class_ptr.cpp',
+            'test_diamond.cpp',
+            'test_diamond_complex.cpp',
+            'test_list.cpp',
+            'test_list_ptrs.cpp',
+            'test_map.cpp',
+            'test_mi.cpp',
+            'test_multiple_inheritance.cpp',
+            'test_multiple_ptrs.cpp',
+            'test_new_operator.cpp',
+            'test_no_rtti.cpp',
+            'test_non_intrusive.cpp',
+            'test_null_ptr.cpp',
+            'test_nvp.cpp',
+            'test_object.cpp',
+            'test_optional.cpp',
+            'test_pimpl.cpp',
+            'test_primitive.cpp',
+            'test_private_base.cpp',
+            'test_recursion.cpp',
+            'test_registered.cpp',
+            'test_shared_ptr.cpp',
+            'test_shared_ptr_132.cpp',
+            'test_shared_ptr_multi_base.cpp',
+            'test_simple_class.cpp',
+            'test_simple_class_ptr.cpp',
+            'test_split.cpp',
+            'test_tracking.cpp',
+            'test_variant.cpp',
+            'test_vector.cpp',
+
+            # The following typed tests are excluded. A meaning full
+            # explanation should be provided alongside.
+
+            #'test_polymorphic.cpp'      # requires polymorphic archives
+            #'test_polymorphic2.cpp'     # requires polymorphic archives
+            #'test_dll_plugin.cpp'       # requires polymorphic archives
+
+            #'test_dll_exported.cpp'     # overwrites BOOST_ARCHIVE_TEST macro
+                                         # to always use text_archive only
+                                         #   -> not interesting.
+
+            #'test_not_serializable.cpp' # according to header, compilation is
+                                         # supposed to fail.
+        ]
+
+    for test in tests:
+        name = os.path.splitext(test)[0]
+
+        bld(target          = name,
+            features        = 'cxx cxxprogram',
+            source  = [ test ],
+            use = [
+                'boost_test_common',
+                'boost_mongo',
+                'MONGO',
+                'PTHREAD'
+                ],
+            defines = [
+                'BOOST_ARCHIVE_TEST' \
+                        '=mongo_archive.hpp'
+                ],
+            cxxflags = cxxflags,
+            includes = '.',
+            install_path = 'bin')
