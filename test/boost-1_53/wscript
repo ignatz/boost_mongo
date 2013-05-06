@@ -127,10 +127,6 @@ def build(bld):
                 'MONGO',
                 'PTHREAD'
                 ],
-            defines = [
-                'BOOST_ARCHIVE_TEST' \
-                        '=mongo_archive.hpp'
-                ],
             cxxflags = cxxflags,
             includes = '.',
             install_path = 'bin')
