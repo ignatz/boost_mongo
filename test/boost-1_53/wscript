@@ -22,7 +22,11 @@ def configure(cfg):
 
     cfg.check_boost(
             lib='serialization system thread filesystem',
-            uselib_store='BOOST4VENDOR')
+            uselib_store='BOOST_COMMON')
+
+    cfg.check_boost(
+            lib='unit_test_framework',
+            uselib_store='BOOST_TEST')
 
     cfg.check_cxx(lib='mongoclient', uselib_store='MONGO')
     cfg.check_cxx(lib='pthread')
@@ -49,7 +53,7 @@ def build(bld):
         bld(target = lib,
             features = 'cxx cxxshlib',
             source  = sources,
-            use = [ 'BOOST4VENDOR', 'DL', 'boost_mongo_inc' ],
+            use = [ 'BOOST_COMMON', 'DL', 'boost_mongo_inc' ],
             cxxflags = cxxflags,
             includes = '.',
             install_path = 'lib')
@@ -119,6 +123,7 @@ def build(bld):
             use = [
                 'boost_test_common',
                 'boost_mongo',
+                'BOOST_TEST',
                 'MONGO',
                 'PTHREAD'
                 ],

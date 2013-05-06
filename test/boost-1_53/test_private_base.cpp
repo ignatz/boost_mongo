@@ -11,6 +11,7 @@
 // invoke header for a custom archive test.
 
 #include <fstream>
+#include <ostream>
 #include <boost/config.hpp>
 #if defined(BOOST_NO_STDC_NAMESPACE)
 namespace std{ 
@@ -39,6 +40,8 @@ protected:
         m_i(i)
     {}
     virtual ~Base() {}
+public:
+	int i() const { return m_i; }
 };
 
 class Derived :  public Base {
@@ -56,6 +59,11 @@ public:
         Base(i)
     {}
 };
+
+std::ostream& operator<<(std::ostream& os, Base const& b)
+{
+	return os << b.i();
+}
 
 BOOST_CLASS_EXPORT(Derived)
 
