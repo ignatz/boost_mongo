@@ -5,42 +5,93 @@
 # License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 # http://www.boost.org/LICENSE_1_0.txt)
 
-import os, sys, re
+import os, sys, re, argparse
 from subprocess import Popen, PIPE
 
-success = re.compile('.*No errors detected.*', re.DOTALL)
-color = {
-        'red' : '\033[31m',
-        'green' : '\033[32m',
-        'yellow' : '\033[33m',
-        'blue' : '\033[34m',
-        'reset' : '\033[0m',
-    }
-xmlout = './build/xml'
+class Color(object):
+    ctrlseq = {
+            'red' : '\033[31m',
+            'green' : '\033[32m',
+            'yellow' : '\033[33m',
+            'blue' : '\033[34m',
+            'reset' : '\033[0m',
+        }
 
-def main():
-    if not os.path.exists(xmlout):
-        os.makedirs(xmlout)
-    tests = os.listdir('./bin')
+    def __init__(self, use_color=True):
+        self.color = use_color
 
-    errorcnt = 0
-    for file in tests:
+    def __call__(self, color):
+        return self.ctrlseq[color] if self.color else ''
+
+
+class TestRunner(object):
+
+    @staticmethod
+    def add_arguments(parser):
+        parser.add_argument('--xml', action='store', default='build/xml',
+                type=str, help='store xml test results in this directory')
+        parser.add_argument('--color', default=1, type=int,
+                help='colorize output')
+
+    def __init__(self, args):
+        self.args = args
+        self.errorcnt = 0
+        self.numtests = 0
+        self.sink = sys.stdout
+        self.color = Color(args.color)
+
+        self.xmlout = args.xml
+        if not os.path.exists(self.xmlout):
+            os.makedirs(self.xmlout)
+
+    def start(self, fname):
+        self.numtests += 1
+
         proc = Popen([
-            './bin/%s' % file, '--log_format=xml', '--log_level=test_suite',
-            '--log_sink=%s' % os.path.join(xmlout, '%s.xml'%file)],
-            stdout=PIPE, stderr=PIPE)
+            './bin/%s' % fname,
+            '--log_format=xml',
+            '--log_level=test_suite',
+            '--log_sink=%s' % os.path.join(self.xmlout, '%s.xml'%fname)
+            ], stdout=PIPE, stderr=PIPE)
         stderr = proc.stderr.read()
 
-        if stderr and not success.match(stderr):
-            print '%s%s%s :' % ( color['blue'],
-                    file.upper(), color['reset'])
-            print '%s\n' % stderr
-            errorcnt+=1
+        success = re.compile('.*No errors detected.*', re.DOTALL)
+        fail = not success.match(stderr)
 
-    print '(%d/%d) %s%d%s tests failed' % (
-            len(tests)-errorcnt, len(tests),
-            color['red' if errorcnt else 'reset'],
-            errorcnt, color['reset'])
+        c = self.color
+        self.sink.write('%(color)s%(prog)s%(reset)s :\n' % {
+            'color' : c('red') if fail else c('green'),
+            'prog' : fname,
+            'reset' : c('reset')
+            })
+
+        if fail:
+            self.errorcnt+=1
+            for line in stderr.split('\n'):
+                self.sink.write('\t%s\n' % line)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        e = self.errorcnt
+        self.sink.write('%(color)s%(fail)s of %(num)s tests failed%(reset)s\n' % {
+            'color' : self.color('red') if e else '',
+            'fail' : e,
+            'num' : self.numtests,
+            'reset': self.color('reset'),
+            })
+
+
+def main():
+    parser = argparse.ArgumentParser(formatter_class=\
+            argparse.ArgumentDefaultsHelpFormatter)
+    TestRunner.add_arguments(parser)
+    args = parser.parse_args()
+
+    with TestRunner(args) as runner:
+        for test in os.listdir('bin'):
+            runner.start(test)
 
 
 if __name__ == '__main__':
