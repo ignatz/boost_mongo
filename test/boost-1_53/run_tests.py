@@ -32,12 +32,14 @@ class TestRunner(object):
                 type=str, help='store xml test results in this directory')
         parser.add_argument('--color', default=1, type=int,
                 help='colorize output')
+        parser.add_argument('--quiet', action='store_true',
+                help='write nothing to stdout')
 
     def __init__(self, args):
         self.args = args
         self.errorcnt = 0
         self.numtests = 0
-        self.sink = sys.stdout
+        self.sink = file(os.devnull, 'wb') if args.quiet else sys.stdout
         self.color = Color(args.color)
 
         self.xmlout = args.xml
