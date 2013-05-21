@@ -29,6 +29,7 @@ namespace std{
 #include "polymorphic_xml_warchive.hpp"
 */
 
+#define BOOST_ARCHIVE_TEST polymorphic_mongo_archive.hpp
 #include "test_tools.hpp"
 
 #include <boost/archive/polymorphic_oarchive.hpp>
@@ -54,7 +55,7 @@ int test_main(int /* argc */, char * /* argv */ [])
         test_istream is(testfile, TEST_STREAM_FLAGS);
         test_iarchive  ia_implementation(is, TEST_ARCHIVE_FLAGS);
         boost::archive::polymorphic_iarchive & ia_interface = ia_implementation;
-        ia_interface >> BOOST_SERIALIZATION_NVP(d1);
+        ia_interface >> boost::serialization::make_nvp("d", d1);
     }
     BOOST_CHECK(d == d1);
     std::remove(testfile);
@@ -68,7 +69,7 @@ int test_main(int /* argc */, char * /* argv */ [])
     {
         test_istream is(testfile, TEST_STREAM_FLAGS);
         test_iarchive  ia_implementation(is, TEST_ARCHIVE_FLAGS);
-        ia_implementation >> BOOST_SERIALIZATION_NVP(d1);
+        ia_implementation >> boost::serialization::make_nvp("d", d1);
     }
     BOOST_CHECK(d == d1);
     std::remove(testfile);
@@ -85,7 +86,7 @@ int test_main(int /* argc */, char * /* argv */ [])
         test_istream is(testfile, TEST_STREAM_FLAGS);
         boost::archive::polymorphic_iarchive * ia_implementation
             = new test_iarchive(is, TEST_ARCHIVE_FLAGS);
-        *ia_implementation >> BOOST_SERIALIZATION_NVP(d1);
+        *ia_implementation >> boost::serialization::make_nvp("d", d1);
         delete ia_implementation;
     }
     BOOST_CHECK(d == d1);

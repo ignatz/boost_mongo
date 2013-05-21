@@ -9,6 +9,7 @@
 // should pass compilation and execution
 #include <fstream>
 
+#define BOOST_ARCHIVE_TEST polymorphic_mongo_archive.hpp
 #include "test_tools.hpp"
 
 #include "test_polymorphic2.hpp"
@@ -31,7 +32,7 @@ int test_main(int /*argc*/, char* /*argv*/[])
         test_istream is(testfile, TEST_STREAM_FLAGS);
         test_iarchive ia_implementation(is, TEST_ARCHIVE_FLAGS);
         boost::archive::polymorphic_iarchive & ipa = ia_implementation;
-        ipa >> BOOST_SERIALIZATION_NVP(loaded);
+        ipa >> boost::serialization::make_nvp("a", loaded);
     }
     BOOST_CHECK(a->i == loaded->i);
     delete a;

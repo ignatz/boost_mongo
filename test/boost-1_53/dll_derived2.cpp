@@ -47,12 +47,6 @@ template EXPORT_DECL(void) derived2::serialize(
     const unsigned int version
 );
 
-// won't be importable with mongo anymore includes. Not yet
-// sure why, hast most likely something to do with guid
-// registration and factory mechanism.
-//#include <boost/archive/mongo_oarchive.hpp>
-//#include <boost/archive/mongo_iarchive.hpp>
-
 // note: export has to be AFTER #includes for all archive classes
 
 #include <boost/serialization/factory.hpp>

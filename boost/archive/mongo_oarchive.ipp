@@ -217,7 +217,8 @@ void mongo_oarchive::save(std::wstring const& ws)
 	std::string s;
 	std::mbstate_t state;
 	std::wstring::const_iterator oit;
-	for (oit = ws.begin(); oit < ws.end(); ++oit) {
+	for (oit = ws.begin(); oit < ws.end(); ++oit)
+	{
 		std::string mb(MB_CUR_MAX, '\0');
 		std::wcrtomb(&mb[0], *oit, &state);
 

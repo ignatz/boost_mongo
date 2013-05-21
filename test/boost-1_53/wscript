@@ -37,26 +37,20 @@ def build(bld):
 
     cxxflags = [ '-g', '-O0', ]
 
-    libs = {
-        'boost_test_common': [
+    bld.shlib(
+        target = 'boost_test_common',
+        source  = [
             'A.cpp',
             'polymorphic_base.cpp',
             'polymorphic_derived2.cpp',
             'polymorphic_derived1.cpp',
+            'test_polymorphic_A.cpp',
+            'test_polymorphic2imp.cpp',
             ],
-        'plugin_polymorphic_derived2' :
-            [ x.relpath() for x in \
-                bld.path.ant_glob('dll_*.cpp') ],
-        }
-
-    for lib, sources in libs.iteritems():
-        bld(target = lib,
-            features = 'cxx cxxshlib',
-            source  = sources,
-            use = [ 'BOOST_COMMON', 'DL', 'boost_mongo_inc' ],
-            cxxflags = cxxflags,
-            includes = '.',
-            install_path = 'lib')
+        use = [ 'BOOST_COMMON', 'boost_mongo_inc' ],
+        cxxflags = cxxflags,
+        includes = '.',
+        install_path = 'lib')
 
     tests = [
             'test_array.cpp',
@@ -98,13 +92,11 @@ def build(bld):
             'test_tracking.cpp',
             'test_variant.cpp',
             'test_vector.cpp',
+            'test_polymorphic.cpp',
+            'test_polymorphic2.cpp',
 
-            # The following typed tests are excluded. A meaning full
+            # The following tests are excluded. A meaningful
             # explanation should be provided alongside.
-
-            #'test_polymorphic.cpp'      # requires polymorphic archives
-            #'test_polymorphic2.cpp'     # requires polymorphic archives
-            #'test_dll_plugin.cpp'       # requires polymorphic archives
 
             #'test_dll_exported.cpp'     # overwrites BOOST_ARCHIVE_TEST macro
                                          # to always use text_archive only
@@ -117,8 +109,8 @@ def build(bld):
     for test in tests:
         name = os.path.splitext(test)[0]
 
-        bld(target          = name,
-            features        = 'cxx cxxprogram',
+        bld.program(
+            target          = name,
             source  = [ test ],
             use = [
                 'boost_test_common',
@@ -130,3 +122,35 @@ def build(bld):
             cxxflags = cxxflags,
             includes = '.',
             install_path = 'bin')
+
+
+    # Dynamic Library Plugin Test
+    bld.shlib(
+        target = 'plugin_polymorphic_derived2',
+        source  = [
+            'polymorphic_base.cpp',
+            'polymorphic_derived2.cpp',
+
+            #'polymorphic_derived1.cpp',
+            #'dll_derived2.cpp',
+            #'dll_base.cpp',
+            ],
+        use = [ 'BOOST_COMMON', 'DL', 'boost_mongo_inc' ],
+        cxxflags = cxxflags + [ '-fPIC' ],
+        linkflags = [ '-zdefs' ],
+        includes = '.',
+        install_path = 'lib')
+
+    bld.program(
+        target          = 'test_dll_plugin',
+        source  = [ 'test_dll_plugin.cpp', ],
+        use = [
+            'plugin_polymorphic_derived2',
+            'boost_mongo',
+            'BOOST_TEST',
+            'MONGO',
+            'PTHREAD',
+            ],
+        cxxflags = cxxflags,
+        includes = '.',
+        install_path = 'bin')
