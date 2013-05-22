@@ -16,7 +16,7 @@ class polymorphic_json_iarchive :
 {
 public:
 	polymorphic_json_iarchive(
-		json::BSONObj& obj,
+		std::istream& is,
 		unsigned int const flags = 0);
 
 	// NVPs are unpacked in polymorphic_iarchive(nvp<T> const& t, int)
@@ -41,10 +41,10 @@ namespace archive {
 
 inline
 polymorphic_json_iarchive::polymorphic_json_iarchive(
-	json::BSONObj& obj,
+	std::istream& is,
 	unsigned int const flags) :
 		detail::polymorphic_iarchive_route2<json_iarchive>(
-			obj, flags)
+			is, flags)
 {}
 
 inline

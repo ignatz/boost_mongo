@@ -29,7 +29,6 @@ namespace std{
 #include "polymorphic_xml_warchive.hpp"
 */
 
-#define BOOST_ARCHIVE_TEST polymorphic_mongo_archive.hpp
 #include "test_tools.hpp"
 
 #include <boost/archive/polymorphic_oarchive.hpp>

@@ -215,7 +215,7 @@ polymorphic_iarchive_route2<Archive>::register_type(T* t)
 template<typename Archive>
 template<typename T>
 polymorphic_iarchive_route2<Archive>::polymorphic_iarchive_route2(
-	T const& t,
+	T& t,
 	unsigned int const flags) :
 		Archive(t, flags)
 {}

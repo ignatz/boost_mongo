@@ -16,7 +16,7 @@ class polymorphic_json_oarchive :
 {
 public:
 	polymorphic_json_oarchive(
-		json::BSONObjBuilder& builder,
+		std::ostream& os,
 		unsigned int const flags = 0);
 
 	// NVPs are unpacked in polymorphic_oarchive(nvp<T> const& t, int)
@@ -41,10 +41,10 @@ namespace archive {
 
 inline
 polymorphic_json_oarchive::polymorphic_json_oarchive(
-	json::BSONObjBuilder& builder,
-	unsigned int const flag) :
+	std::ostream& os,
+	unsigned int const flags) :
 		detail::polymorphic_oarchive_route2<json_oarchive>(
-			builder, flags)
+			os, flags)
 {}
 
 inline

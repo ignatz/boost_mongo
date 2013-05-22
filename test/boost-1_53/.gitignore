@@ -8,3 +8,6 @@
 !*.py
 !wscript
 !README*
+
+# ignore
+testfile_*

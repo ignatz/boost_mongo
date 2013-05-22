@@ -9,7 +9,6 @@
 // should pass compilation and execution
 #include <fstream>
 
-#define BOOST_ARCHIVE_TEST polymorphic_mongo_archive.hpp
 #include "test_tools.hpp"
 
 #include "test_polymorphic2.hpp"

@@ -10,6 +10,8 @@ import sys, os
 components = ['../..']
 recurse    = lambda ctx : map(lambda proj: ctx.recurse(proj), components)
 
+cxxflags = [ '-g', '-O0', ]
+
 def options(opt):
     recurse(opt)
     opt.load('g++')
@@ -29,30 +31,36 @@ def configure(cfg):
             uselib_store='BOOST_TEST')
 
     cfg.check_cxx(lib='mongoclient', uselib_store='MONGO')
-    cfg.check_cxx(lib='pthread')
     cfg.check_cxx(lib='dl')
 
-def build(bld):
-    recurse(bld)
+def build_polymorphic(bld):
+    polymorphic_tests = [
+            'test_polymorphic.cpp',
+            'test_polymorphic2.cpp',
+            ]
 
-    cxxflags = [ '-g', '-O0', ]
+    archives = {
+            'mongo' : 'polymorphic_mongo_archive.hpp',
+            'json'  : 'polymorphic_json_archive.hpp',
+            }
 
-    bld.shlib(
-        target = 'boost_test_common',
-        source  = [
-            'A.cpp',
-            'polymorphic_base.cpp',
-            'polymorphic_derived2.cpp',
-            'polymorphic_derived1.cpp',
-            'test_polymorphic_A.cpp',
-            'test_polymorphic2imp.cpp',
-            ],
-        use = [ 'BOOST_COMMON', 'boost_mongo_inc' ],
-        cxxflags = cxxflags,
-        includes = '.',
-        install_path = 'lib')
+    for archive, header in archives.iteritems():
+        for test in polymorphic_tests:
+            bld.program(
+                target  = '%s_%s' % (os.path.splitext(test)[0], archive),
+                source  = [ test ],
+                use = [
+                    'boost_test_common',
+                    'boost_mongo',
+                    'BOOST_TEST',
+                    'MONGO',
+                    ],
+                defines = [ 'BOOST_ARCHIVE_TEST=%s' % header ],
+                cxxflags = cxxflags,
+                install_path = 'bin')
 
-    tests = [
+def build_plain(bld):
+    plain_tests = [
             'test_array.cpp',
             'test_binary.cpp',
             'test_bitset.cpp',
@@ -92,8 +100,6 @@ def build(bld):
             'test_tracking.cpp',
             'test_variant.cpp',
             'test_vector.cpp',
-            'test_polymorphic.cpp',
-            'test_polymorphic2.cpp',
 
             # The following tests are excluded. A meaningful
             # explanation should be provided alongside.
@@ -106,22 +112,46 @@ def build(bld):
                                          # supposed to fail.
         ]
 
-    for test in tests:
-        name = os.path.splitext(test)[0]
+    archives = {
+            'mongo' : 'mongo_archive.hpp',
+            'json'  : 'json_archive.hpp',
+            }
 
-        bld.program(
-            target          = name,
-            source  = [ test ],
-            use = [
-                'boost_test_common',
-                'boost_mongo',
-                'BOOST_TEST',
-                'MONGO',
-                'PTHREAD'
-                ],
-            cxxflags = cxxflags,
-            includes = '.',
-            install_path = 'bin')
+    for archive, header in archives.iteritems():
+        for test in plain_tests:
+            bld.program(
+                target  = '%s_%s' % (os.path.splitext(test)[0], archive),
+                source  = [ test ],
+                use = [
+                    'boost_test_common',
+                    'boost_mongo',
+                    'BOOST_TEST',
+                    'MONGO',
+                    ],
+                defines = [ 'BOOST_ARCHIVE_TEST=%s' % header ],
+                cxxflags = cxxflags,
+                install_path = 'bin')
+
+def build(bld):
+    recurse(bld)
+
+    bld.shlib(
+        target = 'boost_test_common',
+        source  = [
+            'A.cpp',
+            'polymorphic_base.cpp',
+            'polymorphic_derived2.cpp',
+            'polymorphic_derived1.cpp',
+            'test_polymorphic_A.cpp',
+            'test_polymorphic2imp.cpp',
+            ],
+        use = [ 'BOOST_COMMON', 'boost_mongo_inc' ],
+        cxxflags = cxxflags,
+        install_path = 'lib')
+
+
+    build_plain(bld)
+    build_polymorphic(bld)
 
 
     # Dynamic Library Plugin Test
@@ -134,7 +164,6 @@ def build(bld):
         use = [ 'BOOST_COMMON', 'DL', 'boost_mongo_inc' ],
         cxxflags = cxxflags + [ '-fPIC' ],
         linkflags = [ '-zdefs' ],
-        includes = '.',
         install_path = 'lib')
 
     #bld.program(
@@ -145,8 +174,7 @@ def build(bld):
             #'boost_mongo',
             #'BOOST_TEST',
             #'MONGO',
-            #'PTHREAD',
             #],
+        #defines = [ 'BOOST_ARCHIVE_TEST=polymorphic_mongo_archive.hpp' ],
         #cxxflags = cxxflags,
-        #includes = '.',
         #install_path = 'bin')
