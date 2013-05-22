@@ -155,4 +155,4 @@ BOOST_SERIALIZATION_USE_ARRAY_OPTIMIZATION(boost::archive::mongo_oarchive)
 
 #include <boost/archive/detail/abi_suffix.hpp> // pops abi_suffix.hpp pragmas
 
-#include "boost/archive/mongo_oarchive.ipp"
+#include "boost/archive/impl/mongo_oarchive.ipp"

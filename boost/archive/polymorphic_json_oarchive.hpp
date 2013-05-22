@@ -4,27 +4,27 @@
 // Distributed under the terms of the LGPLv3 or newer.
 
 #include "boost/archive/detail/polymorphic_oarchive_route2.hpp"
-#include "boost/archive/mongo_oarchive.hpp"
+#include "boost/archive/json_oarchive.hpp"
 
 #include <boost/archive/detail/abi_prefix.hpp> // must be the last header
 
 namespace boost {
 namespace archive {
 
-class polymorphic_mongo_oarchive :
-	public detail::polymorphic_oarchive_route2<mongo_oarchive>
+class polymorphic_json_oarchive :
+	public detail::polymorphic_oarchive_route2<json_oarchive>
 {
 public:
-	polymorphic_mongo_oarchive(
-		mongo::BSONObjBuilder& builder,
+	polymorphic_json_oarchive(
+		json::BSONObjBuilder& builder,
 		unsigned int const flags = 0) :
-			detail::polymorphic_oarchive_route2<mongo_oarchive>(
+			detail::polymorphic_oarchive_route2<json_oarchive>(
 				builder, flags)
 	{}
 
 	// NVPs are unpacked in polynomic_oarchive(nvp<T> const& t, int)
 	// and then save is called upon the `t.value()`. Therefore, we need to
-	// control the internal mongo archive stack from here
+	// control the internal json archive stack from here
 	void save_start(char const* name)
 	{
 		if (name) {
@@ -52,4 +52,4 @@ public:
 
 // required by export
 BOOST_SERIALIZATION_REGISTER_ARCHIVE(
-	boost::archive::polymorphic_mongo_oarchive)
+	boost::archive::polymorphic_json_oarchive)

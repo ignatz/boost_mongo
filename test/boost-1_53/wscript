@@ -130,10 +130,6 @@ def build(bld):
         source  = [
             'polymorphic_base.cpp',
             'polymorphic_derived2.cpp',
-
-            #'polymorphic_derived1.cpp',
-            #'dll_derived2.cpp',
-            #'dll_base.cpp',
             ],
         use = [ 'BOOST_COMMON', 'DL', 'boost_mongo_inc' ],
         cxxflags = cxxflags + [ '-fPIC' ],
@@ -141,16 +137,16 @@ def build(bld):
         includes = '.',
         install_path = 'lib')
 
-    bld.program(
-        target          = 'test_dll_plugin',
-        source  = [ 'test_dll_plugin.cpp', ],
-        use = [
-            'plugin_polymorphic_derived2',
-            'boost_mongo',
-            'BOOST_TEST',
-            'MONGO',
-            'PTHREAD',
-            ],
-        cxxflags = cxxflags,
-        includes = '.',
-        install_path = 'bin')
+    #bld.program(
+        #target          = 'test_dll_plugin',
+        #source  = [ 'test_dll_plugin.cpp', ],
+        #use = [
+            #'plugin_polymorphic_derived2',
+            #'boost_mongo',
+            #'BOOST_TEST',
+            #'MONGO',
+            #'PTHREAD',
+            #],
+        #cxxflags = cxxflags,
+        #includes = '.',
+        #install_path = 'bin')

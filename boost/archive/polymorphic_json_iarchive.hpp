@@ -4,31 +4,31 @@
 // Distributed under the terms of the LGPLv3 or newer.
 
 #include "boost/archive/detail/polymorphic_iarchive_route2.hpp"
-#include "boost/archive/mongo_iarchive.hpp"
+#include "boost/archive/json_iarchive.hpp"
 
 #include <boost/archive/detail/abi_prefix.hpp> // must be the last header
 
 namespace boost {
 namespace archive {
 
-class polymorphic_mongo_iarchive :
-	public detail::polymorphic_iarchive_route2<mongo_iarchive>
+class polymorphic_json_iarchive :
+	public detail::polymorphic_iarchive_route2<json_iarchive>
 {
 private:
 	std::vector<bool> _is_obj;
 
 public:
-	polymorphic_mongo_iarchive(
-		mongo::BSONObj& obj,
+	polymorphic_json_iarchive(
+		json::BSONObj& obj,
 		unsigned int const flags = 0) :
-			detail::polymorphic_iarchive_route2<mongo_iarchive>(
+			detail::polymorphic_iarchive_route2<json_iarchive>(
 				obj, flags),
 			_is_obj()
 	{}
 
 	// NVPs are unpacked in polynomic_oarchive(nvp<T> const& t, int)
 	// and then save is called upon the `t.value()`. Therefore, we need to
-	// control the internal mongo archive stack from here.
+	// control the internal json archive stack from here.
 	void load_start(char const* name)
 	{
 		if (name) {
@@ -61,6 +61,4 @@ public:
 
 // required by export
 BOOST_SERIALIZATION_REGISTER_ARCHIVE(
-	boost::archive::polymorphic_mongo_iarchive)
-
-// impl
+	boost::archive::polymorphic_json_iarchive)
