@@ -57,6 +57,33 @@ void mongo_oarchive::append_to_previous_builder(T const& t)
 	top_inserted() = true;
 }
 
+inline
+void mongo_oarchive::save_start(char const* name)
+{
+	// we have an enum or pointer type if name is NULL ... seriously!1!!
+	if (name) {
+		_name = name;
+		_stack.push_back(std::make_pair(
+				value_type(new type), false));
+	}
+}
+
+inline
+void mongo_oarchive::save_end(char const* name)
+{
+	// if it's not a pointer or enum type
+	if (name) {
+		// In case the element on top of the stack is a builtin type it has
+		// been inserted already in this frame to be represented as "name : value"
+		// pair. However, if the top element is a custom type the it still needs
+		// to be inserted as "name : { value }" pair.
+		if (!top_inserted()) {
+			previous_builder().append(name, top_builder().obj());
+		}
+		_stack.pop_back();
+	}
+}
+
 template<typename T>
 typename boost::enable_if_c<
 		!fusion::result_of::has_key<meta_type_mapping, T>::type::value
@@ -87,26 +114,19 @@ template<typename T>
 void mongo_oarchive::save_override(
 	boost::serialization::nvp<T> const& t, int const x)
 {
-	// we have an enum type if name is NULL ... seriously!1!!
-	if (t.name() == NULL) {
-		save_enum_or_pointer(t.const_value(), x);
-		return;
-	}
+	// if `t` is neither enum nor pointer type, pass push a new hierarchical
+	// level of BSONObj to the internal stack.
+	save_start(t.name());
 
-	_name = t.name();
-	_stack.push_back(std::make_pair(value_type(new type), false));
-
+	// pass the task on to the lower levels, which will later on bubble up again
+	// to one of the local load overloads.
 	detail::common_oarchive<mongo_oarchive>::save_override(t.const_value(), x);
 
-	// In case the element on top of the stack is a builtin type it has
-	// been inserted already in this frame to be represented as "name : value"
-	// pair. However, if the top element is a custom type the it still needs
-	// to be inserted as "name : { value }" pair.
-	if (!top_inserted()) {
-		previous_builder().append(t.name(), top_builder().obj());
-	}
-
-	_stack.pop_back();
+	// if `t` has been a builtin type it has already been inserted at the current
+	// stack level as name-value pair and we can simply drop the top most
+	// BSONBuilder. If however, `t` was a custom type we insert the obj
+	// represented by the top most builder at the current stack level.
+	save_end(t.name());
 }
 
 inline
@@ -144,18 +164,6 @@ mongo_oarchive::save_override(
 		std::string s = boost::lexical_cast<std::string>(ii);
 		save_override(make_nvp(s.c_str(), *(a.address()+ii)), x);
 	}
-}
-
-template<typename T>
-void mongo_oarchive::save_enum_or_pointer(T const& t, int const x)
-{
-	detail::common_oarchive<mongo_oarchive>::save_override(t, x);
-}
-
-inline
-void mongo_oarchive::save_enum_or_pointer(int const& e, int const)
-{
-	save(e);
 }
 
 template<typename T>

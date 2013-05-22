@@ -48,9 +48,13 @@ protected:
 
 	std::vector<value_type> _stack;
 	unsigned int const _flags;
+	std::vector<bool> _is_obj;
 
 	type& top();
 	void pop_element();
+
+	void load_start(char const* name);
+	void load_end(char const* name);
 
 	// Anything not an attribute and not a name-value pair is an
 	// error and should be trapped here.
@@ -85,13 +89,6 @@ protected:
 
 	// class_id_optional must be ignored (like basic_xml_iarchive)
 	void load_override(class_id_optional_type&, int const);
-
-	// overload for pointer types
-	template<typename T>
-	void load_enum_or_pointer(T& t, int const);
-
-	// overload for enum types
-	void load_enum_or_pointer(int& t, int const);
 
 	// helper function
 	template<typename U, typename T>

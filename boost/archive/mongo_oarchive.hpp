@@ -54,6 +54,9 @@ protected:
 	template<typename T>
 	void append_to_previous_builder(T const& t);
 
+	void save_start(char const* name);
+	void save_end(char const* name);
+
 	// Anything not an attribute and not a name-value pair is an
 	// error and should be trapped here.
 	template<typename T>
@@ -88,14 +91,6 @@ protected:
 	template<typename T>
 	typename boost::enable_if_c<detail::is_compressible<T>::value>::type
 	save_override(boost::serialization::array<T> const& a, int const);
-
-	// overload for pointer types
-	template<typename T>
-	void save_enum_or_pointer(T const& t, int const);
-
-	// overload for enum types
-	void save_enum_or_pointer(int const& e, int const);
-
 
 	// detail_common_oarchive::save_override calls one of the
 	// following `save` overloads.

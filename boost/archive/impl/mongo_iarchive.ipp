@@ -65,6 +65,32 @@ void mongo_iarchive::pop_element()
 	_stack.back().pop_front();
 }
 
+inline
+void mongo_iarchive::load_start(char const* name)
+{
+	if (name) {
+		_is_obj.push_back(top().isABSONObj());
+		if (_is_obj.back()) {
+			value_type tmp;
+			top().Obj().elems(tmp);
+			_stack.push_back(value_type());
+			_stack.back().swap(tmp);
+		}
+	}
+}
+
+inline
+void mongo_iarchive::load_end(char const* name)
+{
+	if (name) {
+		if(_is_obj.back()) {
+			_stack.pop_back();
+		}
+		_is_obj.pop_back();
+		pop_element();
+	}
+}
+
 template<typename T>
 typename boost::enable_if_c<
 		!fusion::result_of::has_key<meta_type_mapping, T>::type::value
@@ -93,13 +119,7 @@ template<typename T>
 void mongo_iarchive::load_override(
 	boost::serialization::nvp<T> const& t, int const x)
 {
-	// we have an enum type if name is NULL ... seriously!1!!
-	if (t.name() == NULL) {
-		load_enum_or_pointer(t.value(), x);
-		return;
-	}
-
-	if (strcmp(t.name(), top().fieldName()) != 0) {
+	if (t.name() && strcmp(t.name(), top().fieldName()) != 0) {
 		// The name of the NVP doesn't match the current BSONElement. This
 		// could mean that you changed the data structure or serialization
 		// code (particularly NVPs) since serialization, or you're simply
@@ -109,21 +129,19 @@ void mongo_iarchive::load_override(
 			mongo_archive_exception::mongo_archive_name_error));
 	}
 
-	bool const is_obj = top().isABSONObj();
-	if (is_obj) {
-		value_type tmp;
-		top().Obj().elems(tmp);
-		_stack.push_back(value_type());
-		_stack.back().swap(tmp);
-	}
+	// if `t` is neither enum nor pointer type but a custom type (meaning the
+	// current BSONElement is actually a BSONObj), dive one level deeper into
+	// the BSON hierarchy.
+	load_start(t.name());
 
+	// pass the task on to the lower levels, which will later on bubble up again
+	// to one of the local load overloads.
 	detail::common_iarchive<mongo_iarchive>::load_override(t.value(), x);
 
-	if (is_obj) {
-		_stack.pop_back();
-	}
-
-	pop_element();
+	// if `t` has been a custom type, we come back up one hierarchical level and
+	// now need to clean up the already read BSONObj from the stack, but in any
+	// case we need to pop the current BSONElement.
+	load_end(t.name());
 }
 
 template<typename T>
@@ -180,18 +198,6 @@ void mongo_iarchive::load_override(class_id_optional_type&, int const)
 			meta_type_names)) == 0) {
 		pop_element();
 	}
-}
-
-template<typename T>
-void mongo_iarchive::load_enum_or_pointer(T& t, int const x)
-{
-	detail::common_iarchive<mongo_iarchive>::load_override(t, x);
-}
-
-inline
-void mongo_iarchive::load_enum_or_pointer(int& t, int const)
-{
-	top().Val(t);
 }
 
 template<typename U, typename T>
