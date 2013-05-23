@@ -1,5 +1,7 @@
 # A Mongo/JSON Boost Serialization Archiver
 
+[![Build Status](https://travis-ci.org/ignatz/boost_mongo.png?branch=master)](https://travis-ci.org/ignatz/boost_mongo)
+
 This library provides an boost serialization archiver for `mongoDB`.
 
 You can easily store and retrieve all your data in human readable format to
