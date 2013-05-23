@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 #include <string>
+#include <boost/numeric/conversion/bounds.hpp>
 
 typedef ::testing::Types<
 		bool,

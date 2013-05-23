@@ -14,7 +14,6 @@
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/binary_object.hpp>
 #include <boost/type_traits/is_same.hpp>
-#include <boost/numeric/conversion/bounds.hpp>
 
 #include "test/MongoArchive.h"
 #include "test/builtins.h"
