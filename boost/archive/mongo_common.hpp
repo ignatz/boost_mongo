@@ -20,7 +20,6 @@
 #include <sstream>
 
 #include <boost/type_traits.hpp>
-#include <boost/type_traits/has_equal_to.hpp>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/lexical_cast.hpp>
@@ -68,7 +67,11 @@ struct is_compressible
 	static const bool value =
 		boost::has_trivial_default_constructor<T>::value
 		&& (
+#ifdef BOOST_TT_HAS_EQUAL_TO_HPP_INCLUDED
 			boost::has_equal_to<T>::value
+#else
+			false
+#endif // BOOST_TT_HAS_EQUAL_TO_HPP_INCLUDED
 			|| boost::is_arithmetic<T>::value
 		   )
 		&& !boost::is_array<T>::value;

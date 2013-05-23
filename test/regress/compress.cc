@@ -17,9 +17,11 @@ bool operator== (ExternEqual const&, ExternEqual const&)
 
 TEST_F(MongoArchive, NotCompressibleRegression)
 {
+#ifdef BOOST_TT_HAS_EQUAL_TO_HPP_INCLUDED
 	ASSERT_TRUE (boost::has_equal_to<Simple>::value);
 	ASSERT_TRUE (boost::has_equal_to<ExternEqual>::value);
 	ASSERT_FALSE(boost::has_equal_to<Plain>::value);
+#endif //  BOOST_TT_HAS_EQUAL_TO_HPP_INCLUDED
 	ASSERT_FALSE(boost::archive::detail::is_compressible<Plain>::value);
 
 	std::vector<Plain> a(42);
