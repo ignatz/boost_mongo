@@ -1,0 +1,15 @@
+language: cpp
+compiler:
+  - gcc
+  - clang
+before_install:
+  - sudo apt-get install libboost-dev mongodb-dev
+before_script:
+  - git submodule update --init --recursive
+  - cd test
+  - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/lib
+script:
+  - ./waf configure install
+  - ./bin/main --gtest_filter=-JSONBuiltin/15.BuiltinTypes
+
+# vim: et ts=2 sw=2
