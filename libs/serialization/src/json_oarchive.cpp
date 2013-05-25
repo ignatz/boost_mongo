@@ -13,4 +13,3 @@ template class detail::archive_serializer_map<json_oarchive>;
 
 } // namespace archive
 } // namespace boost
-

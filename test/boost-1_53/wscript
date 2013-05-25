@@ -22,16 +22,12 @@ def configure(cfg):
     cfg.load('g++')
     cfg.load('boost')
 
-    cfg.check_boost(
-            lib='serialization system thread filesystem',
-            uselib_store='BOOST_COMMON')
+    cfg.check_boost(lib='unit_test_framework', uselib_store='BOOST4TEST')
 
-    cfg.check_boost(
-            lib='unit_test_framework',
-            uselib_store='BOOST_TEST')
-
-    cfg.check_cxx(lib='mongoclient', uselib_store='MONGO')
     cfg.check_cxx(lib='dl')
+
+    # use $PWD as default prefix for tests, if no prefix is given explicitly
+    cfg.env.PREFIX = cfg.env.PREFIX if os.getenv('PREFIX') else cfg.path.abspath()
 
 def build_polymorphic(bld):
     polymorphic_tests = [
@@ -50,10 +46,9 @@ def build_polymorphic(bld):
                 target  = '%s_%s' % (os.path.splitext(test)[0], archive),
                 source  = [ test ],
                 use = [
+                    'BOOST4TEST',
                     'boost_test_common',
-                    'boost_mongo',
-                    'BOOST_TEST',
-                    'MONGO',
+                    'boost-mongo',
                     ],
                 defines = [ 'BOOST_ARCHIVE_TEST=%s' % header ],
                 cxxflags = cxxflags,
@@ -123,10 +118,9 @@ def build_plain(bld):
                 target  = '%s_%s' % (os.path.splitext(test)[0], archive),
                 source  = [ test ],
                 use = [
+                    'BOOST4TEST',
                     'boost_test_common',
-                    'boost_mongo',
-                    'BOOST_TEST',
-                    'MONGO',
+                    'boost-mongo',
                     ],
                 defines = [ 'BOOST_ARCHIVE_TEST=%s' % header ],
                 cxxflags = cxxflags,
@@ -145,7 +139,7 @@ def build(bld):
             'test_polymorphic_A.cpp',
             'test_polymorphic2imp.cpp',
             ],
-        use = [ 'BOOST_COMMON', 'boost_mongo_inc' ],
+        use = [ 'BOOST4MONGO', 'boost-mongo_inc' ],
         cxxflags = cxxflags,
         install_path = 'lib')
 
@@ -161,7 +155,7 @@ def build(bld):
             'polymorphic_base.cpp',
             'polymorphic_derived2.cpp',
             ],
-        use = [ 'BOOST_COMMON', 'DL', 'boost_mongo_inc' ],
+        use = [ 'BOOST4MONGO', 'DL', 'boost-mongo_inc' ],
         cxxflags = cxxflags + [ '-fPIC' ],
         linkflags = [ '-zdefs' ],
         install_path = 'lib')
@@ -171,9 +165,8 @@ def build(bld):
         #source  = [ 'test_dll_plugin.cpp', ],
         #use = [
             #'plugin_polymorphic_derived2',
-            #'boost_mongo',
-            #'BOOST_TEST',
-            #'MONGO',
+            #'boost-mongo',
+            #'BOOST4TEST',
             #],
         #defines = [ 'BOOST_ARCHIVE_TEST=polymorphic_mongo_archive.hpp' ],
         #cxxflags = cxxflags,

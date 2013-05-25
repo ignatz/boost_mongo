@@ -13,4 +13,3 @@ template class detail::archive_serializer_map<mongo_oarchive>;
 
 } // namespace archive
 } // namespace boost
-

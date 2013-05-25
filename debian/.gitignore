@@ -1,0 +1,7 @@
+# debhelper generated stuff
+files
+*.log
+libboost-mongo1.0*
+
+# keep overrides
+!*.lintian-overrides

@@ -3,3 +3,4 @@ build
 .waf-*
 bin
 lib
+include

@@ -1,0 +1,10 @@
+#!/usr/bin/make -f
+PREFIX=/usr
+
+%:
+	eval $$(dpkg-buildflags --export=sh); PREFIX=$(PREFIX) dh $@
+
+# for now shipping waf binaries
+#override_dh_auto_clean:
+#	./waf clean || true
+#	find waflib -name "*.pyc" -delete

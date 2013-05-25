@@ -1,0 +1,5 @@
+boost-mongo (1.0-1) UNRELEASED; urgency=low
+
+  * Initial release.
+
+ -- Sebastian Jeltsch <sjeltsch@kip.uni-heidelberg.de>  Fri, 24 May 2013 18:31:52 +0200

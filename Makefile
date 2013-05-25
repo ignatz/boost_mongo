@@ -16,4 +16,7 @@ clean:
 distclean:
 	./waf distclean
 
+dist:
+	./waf dist
+
 .PHONY: build install configure clean distclean

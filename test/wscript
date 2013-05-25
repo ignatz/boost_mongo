@@ -16,7 +16,8 @@ def configure(cfg):
     recurse(cfg)
     cfg.load('g++')
 
-    cfg.check_cxx(lib='mongoclient', uselib_store='MONGO')
+    # use $PWD as default prefix for tests, if no prefix is given explicitly
+    cfg.env.PREFIX = cfg.env.PREFIX if os.getenv('PREFIX') else cfg.path.abspath()
 
 def build(bld):
     recurse(bld)
@@ -26,7 +27,7 @@ def build(bld):
         features        = 'cxx cxxprogram',
         source          = bld.path.ant_glob('*.cc') + \
                 bld.path.ant_glob('regress/*.cc'),
-        use             = ['gtest', 'boost_mongo', 'MONGO' ],
+        use             = ['gtest', 'boost-mongo'],
         install_path    = 'bin',
         cxxflags        = [
                 '-g',
@@ -36,6 +37,4 @@ def build(bld):
                 '-pedantic',
                 '-Wno-long-long',
                 '-Wno-variadic-macros',
-            ],
-        includes       = '.',
-    )
+            ])
