@@ -10,14 +10,14 @@ recurse    = lambda ctx : map(lambda proj: ctx.recurse(proj), components)
 
 def options(opt):
     recurse(opt)
-    opt.load('g++')
+    opt.load('compiler_cxx')
 
 def configure(cfg):
     recurse(cfg)
-    cfg.load('g++')
+    cfg.load('compiler_cxx')
 
     # use $PWD as default prefix for tests, if no prefix is given explicitly
-    cfg.env.PREFIX = cfg.env.PREFIX if os.getenv('PREFIX') else cfg.path.abspath()
+    cfg.env.PREFIX = cfg.env.PREFIX if os.getenv('PREFIX') else '.'
 
 def build(bld):
     recurse(bld)

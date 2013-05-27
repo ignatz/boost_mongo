@@ -14,12 +14,12 @@ cxxflags = [ '-g', '-O0', ]
 
 def options(opt):
     recurse(opt)
-    opt.load('g++')
+    opt.load('compiler_cxx')
     opt.load('boost')
 
 def configure(cfg):
     recurse(cfg)
-    cfg.load('g++')
+    cfg.load('compiler_cxx')
     cfg.load('boost')
 
     cfg.check_boost(lib='unit_test_framework', uselib_store='BOOST4TEST')
@@ -27,7 +27,7 @@ def configure(cfg):
     cfg.check_cxx(lib='dl')
 
     # use $PWD as default prefix for tests, if no prefix is given explicitly
-    cfg.env.PREFIX = cfg.env.PREFIX if os.getenv('PREFIX') else cfg.path.abspath()
+    cfg.env.PREFIX = cfg.env.PREFIX if os.getenv('PREFIX') else '.'
 
 def build_polymorphic(bld):
     polymorphic_tests = [

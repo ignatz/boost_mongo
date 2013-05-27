@@ -9,11 +9,11 @@ APPNAME = 'boost-mongo'
 VERSION = '1.0'
 
 def options(opt):
-    opt.load('g++')
+    opt.load('compiler_cxx')
     opt.load('boost')
 
 def configure(cfg):
-    cfg.load('g++')
+    cfg.load('compiler_cxx')
     cfg.load('boost')
 
     cfg.check_boost(lib='serialization thread system filesystem',
@@ -25,16 +25,17 @@ def configure(cfg):
     # time. Note that, if you want to install the package at the system level
     # you can still explicitly specify the PREFIX var. For most unix style
     # systems the prefix should be '/usr/local'.
-    cfg.env.PREFIX = cfg.env.PREFIX if os.getenv('PREFIX') else cfg.path.abspath()
+    cfg.env.PREFIX = cfg.env.PREFIX if os.getenv('PREFIX') else '.'
 
 def build(bld):
     bld(target          = 'boost-mongo_inc',
         export_includes = '.')
 
-    # use either CXXFLAGS or fallback to defaults
-    cxxflags = bld.env['CXXFLAGS']
-    cxxflags = ['-O2', '-Wall', '-Wextra', '-pedantic', '-Wno-long-long',
-            '-Wno-variadic-macros'] if not cxxflags else cxxflags
+    # use either system CXXFLAGS, LDFLAGS or fall back to defaults
+    cxxflags = bld.env['CXXFLAGS'] if bld.env['CXXFLAGS'] else [
+            '-O2', '-Wall', '-Wextra', '-pedantic',
+            '-Wno-long-long', '-Wno-variadic-macros']
+    ldflags  = bld.env['LDFLAGS'] if bld.env['LDFLAGS'] else [ '-zdefs' ]
 
     bld.shlib(
         target          = 'boost-mongo',
@@ -46,7 +47,7 @@ def build(bld):
             'PTHREAD',
             'boost-mongo_inc'
             ],
-        linkflags       = bld.env['LDFLAGS'] + [
+        linkflags       = ldflags + [
             '-Wl,-soname,libboost-mongo.so.%s' % VERSION
             ],
         cxxflags        = cxxflags)
