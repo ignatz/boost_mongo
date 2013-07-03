@@ -11,8 +11,12 @@
 #pragma pop_macro("assert")
 #include <cassert>
 
+#if FUSION_MAX_VECTOR_SIZE < 20
 #define FUSION_MAX_VECTOR_SIZE 20
+#endif
+#if FUSION_MAX_MAP_SIZE < 20
 #define FUSION_MAX_MAP_SIZE 20
+#endif
 
 #include <vector>
 #include <cstddef>
