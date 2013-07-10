@@ -11,8 +11,16 @@
 #pragma pop_macro("assert")
 #include <cassert>
 
+#if !defined(FUSION_MAX_VECTOR_SIZE)
 #define FUSION_MAX_VECTOR_SIZE 20
+#endif
+#if !defined(FUSION_MAX_MAP_SIZE)
 #define FUSION_MAX_MAP_SIZE 20
+#endif
+
+#if FUSION_MAX_VECTOR_SIZE < 20 || FUSION_MAX_MAP_SIZE < 20
+#error "boost_mongo requires FUSION_MAX_VECTOR_SIZE and FUSION_MAX_MAP_SIZE>= 20"
+#endif
 
 #include <vector>
 #include <cstddef>
