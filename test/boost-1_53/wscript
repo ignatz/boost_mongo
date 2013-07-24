@@ -6,6 +6,7 @@
 # http://www.boost.org/LICENSE_1_0.txt)
 
 import sys, os
+from waflib import Utils
 
 components = ['../..']
 recurse    = lambda ctx : map(lambda proj: ctx.recurse(proj), components)
@@ -171,3 +172,6 @@ def build(bld):
         #defines = [ 'BOOST_ARCHIVE_TEST=polymorphic_mongo_archive.hpp' ],
         #cxxflags = cxxflags,
         #install_path = 'bin')
+
+    # install test runner locally
+    bld.install_as('bin/run_tests', bld.path.find_node('run_tests.py'), chmod=Utils.O755)

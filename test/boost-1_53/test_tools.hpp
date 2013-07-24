@@ -54,7 +54,7 @@ char const * tmpnam(char * buffer)
 // `filesystem::unique_path`.
 #if BOOST_FILESYSTEM_VERSION > 2
 		path tempfilename =
-			unique_path("serialization-%%%%");
+			unique_path("build/serialization-%%%%");
 #else
 		path tempfilename("serialization-1337");
 #endif

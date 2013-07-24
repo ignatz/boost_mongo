@@ -5,7 +5,7 @@
 # License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 # http://www.boost.org/LICENSE_1_0.txt)
 
-import os, sys, re, argparse
+import os, sys, re, argparse, glob
 from subprocess import Popen, PIPE
 
 class Color(object):
@@ -50,7 +50,7 @@ class TestRunner(object):
         self.numtests += 1
 
         proc = Popen([
-            './bin/%s' % fname,
+            './%s' % fname,
             '--log_format=xml',
             '--log_level=test_suite',
             '--log_sink=%s' % os.path.join(self.xmlout, '%s.xml'%fname)
@@ -88,11 +88,13 @@ class TestRunner(object):
 def main():
     parser = argparse.ArgumentParser(formatter_class=\
             argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('pattern', action='store', default='bin/test_*',
+            nargs='?', help='pattern for test executables to run')
     TestRunner.add_arguments(parser)
     args = parser.parse_args()
 
     with TestRunner(args) as runner:
-        for test in os.listdir('bin'):
+        for test in glob.glob(args.pattern):
             runner.start(test)
 
 

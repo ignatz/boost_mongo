@@ -6,28 +6,41 @@
 import sys, os
 
 components = ['gtest', '..']
-recurse    = lambda ctx : map(lambda proj: ctx.recurse(proj), components)
+recurse = lambda ctx, *a: [ctx.recurse(prj) for prj in (a if a else components)]
 
 def options(opt):
     recurse(opt)
     opt.load('compiler_cxx')
+    opt.add_option('--no-boost-tests', action='store_true', default=False,
+            dest='noboost', help='build without original boost tests')
 
 def configure(cfg):
-    recurse(cfg)
     cfg.load('compiler_cxx')
+
+    # add build targets from original boost tests
+    cfg.env.components = components
+    if not cfg.options.noboost:
+        cfg.env.components += ['boost-1_53']
 
     # use $PWD as default prefix for tests, if no prefix is given explicitly
     cfg.env.PREFIX = cfg.env.PREFIX if os.getenv('PREFIX') else '.'
 
+    # build with gcov extension if any of the following coverage tools is installed
+    cov = ['lcov', 'gcovr']
+    if any([cfg.find_program(ii, mandatory=False) for ii in cov]):
+        cfg.check_cxx(lib='gcov', linkflags='--coverage', cxxflags='--coverage')
+
+    recurse(cfg, cfg.env.components)
+
 def build(bld):
-    recurse(bld)
+    recurse(bld, bld.env.components)
 
     bld(
         target          = 'main',
         features        = 'cxx cxxprogram',
         source          = bld.path.ant_glob('*.cc') + \
                 bld.path.ant_glob('regress/*.cc'),
-        use             = ['gtest', 'boost-mongo'],
+        use             = ['gtest', 'boost-mongo', 'GCOV'],
         install_path    = 'bin',
         cxxflags        = [
                 '-g',
