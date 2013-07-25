@@ -6,11 +6,11 @@ The tests provided within this directory originate from Boost 1.53
 
 ## Changes
 
-The provided tests contain minor modifications compared to ones distributed as
-part of Boost library.
+The provided tests contain minor modifications compared to the ones distributed
+as part of Boost.
 Mostly, because mongo archives unlike xml archives check NVP keys for
-consistency. During deserialization, the archive expects to read from database
-the same NVP-keys as were used during serialization.
+consistency. The same NVP-keys are expected during deserialialization as during
+serialization, while `xml_iarchive` simply ignores them.
 
 ## LICENSE
 
