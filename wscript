@@ -6,7 +6,7 @@
 import sys, os
 
 APPNAME = 'boost-mongo'
-VERSION = '1.0'
+VERSION = '0.1.0'
 
 def options(opt):
     opt.load('compiler_cxx')
