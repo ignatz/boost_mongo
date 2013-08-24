@@ -28,7 +28,7 @@ def configure(cfg):
     cfg.env.PREFIX = cfg.env.PREFIX if os.getenv('PREFIX') else '.'
 
 def build(bld):
-    bld(target          = 'boost-mongo_inc',
+    bld(target = 'boost-mongo_inc',
         export_includes = '.')
 
     # use either system CXXFLAGS, LDFLAGS or fall back to defaults
@@ -38,25 +38,18 @@ def build(bld):
     ldflags  = bld.env['LDFLAGS'] if bld.env['LDFLAGS'] else [ '-zdefs' ]
 
     bld.shlib(
-        target          = 'boost-mongo',
-        source          = bld.path.ant_glob('libs/**/*.cpp'),
-        install_path    = None,
-        use             = [
+        target = 'boost-mongo',
+        source = bld.path.ant_glob('libs/**/*.cpp'),
+        install_path = '${PREFIX}/lib',
+        use = [
             'MONGOCLIENT',
             'BOOST4MONGO',
             'PTHREAD',
             'boost-mongo_inc'
             ],
-        linkflags       = ldflags + [
-            '-Wl,-soname,libboost-mongo.so.%s' % VERSION
-            ],
-        cxxflags        = cxxflags)
-
-    # build shlib conforming to ldconfig
-    bld.install_as('${PREFIX}/lib/libboost-mongo.so.' + VERSION,
-        'libboost-mongo.so')
-    bld.symlink_as('${PREFIX}/lib/libboost-mongo.so',
-        'libboost-mongo.so.%s' % VERSION)
+        linkflags = ldflags + ['-Wl,-soname,libboost-mongo.so.%s' % VERSION],
+        cxxflags = cxxflags,
+        vnum = VERSION)
 
     # install headers
     for header in bld.path.ant_glob('boost/archive/**/*.(hpp|ipp)'):
@@ -67,4 +60,4 @@ def dist(dst):
     dst.algo      = 'tar.gz'
     dst.excl      = ' **/waf-1.* **/.waf-1.* **/waf3-1.* **/.waf3-1.* ' \
             '**/*~ **/*.rej **/*.orig **/*.pyc  **/*.pyo **/*.bak ' \
-            '**/*.swp **/.lock-w* **/.* **/build **/lib '
+            '**/*.swp **/.lock-w* **/.* **/build **/lib **/test'
