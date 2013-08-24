@@ -1,0 +1,1 @@
+libboost-mongo0: non-dev-pkg-with-shlib-symlink usr/lib/libboost-mongo.so.0.1.0 usr/lib/libboost-mongo.so

@@ -1,4 +1,4 @@
-boost-mongo (1.0-1) UNRELEASED; urgency=low
+boost-mongo (0.1.0-1) UNRELEASED; urgency=low
 
   * Initial release.
 
